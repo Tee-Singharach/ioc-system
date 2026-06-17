@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent skills & hooks (regenerate: npx skills add / npx impeccable install)
+.agents/
+.codex/
+.cursor/skills/
+.cursor/hooks.json
+.impeccable/
+skills-lock.json
