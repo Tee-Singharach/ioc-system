@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Priority, Ticket } from "@/lib/types/ticket";
+import { getOfficerTickets } from "@/lib/officer-access";
 import { useMockAuth } from "@/providers/mock-auth-provider";
-import { useMockTickets } from "@/providers/mock-ticket-provider";
+import { useTickets } from "@/providers/mock-ticket-provider";
 import { TicketFilterBar } from "@/components/tickets/ticket-filters";
 import type { StatusTab } from "@/components/tickets/ticket-status-tabs";
 import { TicketTable } from "@/components/tickets/ticket-table";
@@ -29,7 +30,7 @@ function countByTab(tickets: Ticket[]): Record<StatusTab, number> {
 
 export default function OfficerTicketsContent() {
   const { user } = useMockAuth();
-  const { getOfficerTickets } = useMockTickets();
+  const tickets = useTickets();
 
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
@@ -38,8 +39,8 @@ export default function OfficerTicketsContent() {
   const [page, setPage] = useState(1);
 
   const officerTickets = useMemo(
-    () => (user ? getOfficerTickets(user.id, user.departmentId) : []),
-    [user, getOfficerTickets],
+    () => (user ? getOfficerTickets(tickets, user) : []),
+    [user, tickets],
   );
 
   const tabCounts = useMemo(() => countByTab(officerTickets), [officerTickets]);

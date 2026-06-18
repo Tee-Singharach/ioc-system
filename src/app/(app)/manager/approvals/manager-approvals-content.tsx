@@ -1,0 +1,70 @@
+"use client";
+
+import { useMemo } from "react";
+import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
+import { getPendingApprovalTickets } from "@/lib/manager-access";
+import { formatShortDate } from "@/lib/ticket-progress";
+import { useMockAuth } from "@/providers/mock-auth-provider";
+import { useMockTickets } from "@/providers/mock-ticket-provider";
+import { PriorityBadge } from "@/components/tickets/priority-badge";
+import { StatusBadge } from "@/components/tickets/status-badge";
+import { Card, CardBody } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+
+export default function ManagerApprovalsContent() {
+  const { user } = useMockAuth();
+  const { tickets } = useMockTickets();
+
+  const pending = useMemo(
+    () => (user ? getPendingApprovalTickets(tickets, user) : []),
+    [tickets, user],
+  );
+
+  if (!user) return null;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="รออนุมัติ"
+        description={`คำร้องที่รอการพิจารณา · ${pending.length} รายการ`}
+      />
+
+      <Card>
+        <CardBody className="p-0">
+          {pending.length === 0 ? (
+            <div className="flex flex-col items-center px-6 py-16 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-300">
+                <ClipboardCheck className="h-8 w-8" strokeWidth={1.5} aria-hidden />
+              </div>
+              <p className="mt-5 text-sm font-medium text-zinc-700">ไม่มีคำร้องรออนุมัติ</p>
+              <p className="mt-1 text-sm text-zinc-500">คำร้องที่เจ้าหน้าที่ส่งมาจะแสดงที่นี่</p>
+            </div>
+          ) : (
+            <ul>
+              {pending.map((ticket) => (
+                <li
+                  key={ticket.id}
+                  className="border-b border-zinc-100 px-5 py-4 last:border-b-0"
+                >
+                  <Link href={`/manager/tickets/${ticket.id}`} className="block min-w-0 hover:opacity-90">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-sm font-semibold text-blue-600">{ticket.ticketNo}</span>
+                      <StatusBadge status={ticket.status} />
+                      <PriorityBadge priority={ticket.priority} />
+                    </div>
+                    <p className="mt-1 truncate font-medium text-zinc-900">{ticket.title}</p>
+                    <p className="mt-0.5 text-sm text-zinc-500">
+                      {ticket.requesterName} · {ticket.assigneeName ?? ticket.receivedByName ?? "—"} · กำหนด{" "}
+                      {formatShortDate(ticket.scheduledEndAt)}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardBody>
+      </Card>
+    </div>
+  );
+}

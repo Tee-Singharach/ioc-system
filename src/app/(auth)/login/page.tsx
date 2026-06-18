@@ -6,9 +6,18 @@ import { useRouter } from "next/navigation";
 import { AuthCard } from "@/components/layout/auth-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ROLE_TAB_LABELS } from "@/lib/admin-ui";
 import { homePathForRole } from "@/lib/officer-access";
 import { clearSession } from "@/lib/mock/session";
 import { useMockAuth } from "@/providers/mock-auth-provider";
+import type { UserRole } from "@/lib/types/ticket";
+
+const QUICK_LOGINS: { username: string; role: UserRole; label: string }[] = [
+  { username: "staff1", role: "staff", label: ROLE_TAB_LABELS.staff },
+  { username: "officer1", role: "officer", label: ROLE_TAB_LABELS.officer },
+  { username: "manager1", role: "manager", label: ROLE_TAB_LABELS.manager },
+  { username: "admin1", role: "admin", label: ROLE_TAB_LABELS.admin },
+];
 
 export default function LoginPage() {
   const { login, user } = useMockAuth();
@@ -18,7 +27,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!user) return;
-    if (user.role === "staff" || user.role === "officer") {
+    if (user.role === "staff" || user.role === "officer" || user.role === "manager" || user.role === "admin") {
       router.replace(homePathForRole(user.role));
       return;
     }
@@ -30,7 +39,7 @@ export default function LoginPage() {
     login(username, password);
   }
 
-  if (user?.role === "staff" || user?.role === "officer") {
+  if (user?.role === "staff" || user?.role === "officer" || user?.role === "manager" || user?.role === "admin") {
     return (
       <div className="flex min-h-full items-center justify-center text-sm text-zinc-500">
         กำลังเข้าสู่ระบบ...
@@ -41,16 +50,47 @@ export default function LoginPage() {
   return (
     <AuthCard title="เข้าสู่ระบบ" subtitle="IOC System">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input label="ชื่อผู้ใช้" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="staff1 หรือ officer1" autoComplete="username" />
-        <Input label="รหัสผ่าน" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
-        <Button type="submit" className="w-full">เข้าสู่ระบบ</Button>
+        <Input
+          label="ชื่อผู้ใช้"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="ชื่อผู้ใช้"
+          autoComplete="username"
+        />
+        <Input
+          label="รหัสผ่าน"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+          autoComplete="current-password"
+        />
+        <Button type="submit" className="w-full">
+          เข้าสู่ระบบ
+        </Button>
         <p className="text-center text-sm text-zinc-500">
-          <Link href="/reset-password" className="text-blue-600 hover:underline">ลืมรหัสผ่าน?</Link>
-        </p>
-        <p className="rounded-lg bg-blue-50 px-3 py-2 text-center text-xs text-blue-700">
-          Mock: staff1 (พนักงาน) · officer1 (เจ้าหน้าที่)
+          <Link href="/reset-password" className="text-blue-600 hover:underline">
+            ลืมรหัสผ่าน?
+          </Link>
         </p>
       </form>
+
+      <div className="mt-6 border-t border-zinc-100 pt-5">
+        <p className="mb-3 text-center text-xs font-medium text-zinc-500">ทดลองใช้งาน</p>
+        <div className="grid grid-cols-2 gap-2">
+          {QUICK_LOGINS.map((item) => (
+            <Button
+              key={item.role}
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => login(item.username, "")}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </div>
+      </div>
     </AuthCard>
   );
 }

@@ -1,28 +1,6 @@
-import type { StatusHistoryEntry, Ticket, TicketStatus } from "@/lib/types/ticket";
+import type { Ticket, TicketStatus } from "@/lib/types/ticket";
 
-const WORKFLOW: TicketStatus[] = ["รอรับเรื่อง", "กำลังดำเนินการ", "รออนุมัติ", "เสร็จสมบูรณ์"];
 const TERMINAL: TicketStatus[] = ["ปฏิเสธ", "ยกเลิก"];
-
-function workflowStepIndex(status: TicketStatus, history: StatusHistoryEntry[]): number {
-  if (status === "เสร็จสมบูรณ์") return WORKFLOW.length - 1;
-  const idx = WORKFLOW.findIndex((s) => s === status);
-  if (idx >= 0) return idx;
-  if (TERMINAL.includes(status)) {
-    let max = 0;
-    for (const h of history) {
-      const i = WORKFLOW.findIndex((s) => s === h.status);
-      if (i > max) max = i;
-    }
-    return max;
-  }
-  return 0;
-}
-
-export function ticketWorkflowPercent(status: TicketStatus, history: StatusHistoryEntry[]): number {
-  if (status === "เสร็จสมบูรณ์") return 100;
-  const current = workflowStepIndex(status, history);
-  return Math.round((current / (WORKFLOW.length - 1)) * 100);
-}
 
 export function isTicketOverdue(ticket: Ticket): boolean {
   if (TERMINAL.includes(ticket.status) || ticket.status === "เสร็จสมบูรณ์") return false;

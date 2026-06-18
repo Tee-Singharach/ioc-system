@@ -9,7 +9,6 @@ import { clearSession, getServerSessionSnapshot, getSessionRaw, parseSession, se
 
 interface MockAuthContextValue {
   user: User | null;
-  isLoading: boolean;
   login: (username: string, password: string) => void;
   logout: () => void;
   updateName: (name: string) => void;
@@ -17,15 +16,10 @@ interface MockAuthContextValue {
 
 const MockAuthContext = createContext<MockAuthContextValue | null>(null);
 
-function subscribeNoop() {
-  return () => {};
-}
-
 export function MockAuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const sessionRaw = useSyncExternalStore(subscribeSession, getSessionRaw, getServerSessionSnapshot);
   const user = useMemo(() => parseSession(sessionRaw), [sessionRaw]);
-  const isLoading = useSyncExternalStore(subscribeNoop, () => false, () => true);
 
   const login = useCallback((username: string, password: string) => {
     // TODO: replace with real JWT authentication (password: ${password})
@@ -47,8 +41,8 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, isLoading, login, logout, updateName }),
-    [user, isLoading, login, logout, updateName],
+    () => ({ user, login, logout, updateName }),
+    [user, login, logout, updateName],
   );
 
   return (

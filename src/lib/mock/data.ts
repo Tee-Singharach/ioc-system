@@ -1,3 +1,4 @@
+import type { AuditLogEntry, ManagedDepartment, ManagedUser } from "@/lib/types/admin";
 import type { Department, Ticket, User } from "@/lib/types/ticket";
 
 export const MOCK_OFFICER_USER: User = {
@@ -38,6 +39,94 @@ export const MOCK_OFFICERS: User[] = [
     name: "นภา การเงิน",
     role: "officer",
     departmentId: "dept-finance",
+  },
+];
+
+export const MOCK_MANAGER_USER: User = {
+  id: "manager-001",
+  username: "manager1",
+  name: "สมศักดิ์ ผู้จัดการ",
+  role: "manager",
+  departmentId: "dept-it",
+};
+
+export const MOCK_MANAGERS: User[] = [
+  MOCK_MANAGER_USER,
+  {
+    id: "manager-002",
+    username: "manager2",
+    name: "วราภรณ์ ผู้จัดการ",
+    role: "manager",
+    departmentId: "dept-hr",
+  },
+];
+
+export const MOCK_ADMIN_USER: User = {
+  id: "admin-001",
+  username: "admin1",
+  name: "ผู้ดูแล ระบบ",
+  role: "admin",
+  departmentId: "dept-admin",
+};
+
+export const INITIAL_MANAGED_USERS: ManagedUser[] = [
+  MOCK_STAFF_USER,
+  {
+    id: "staff-002",
+    username: "staff2",
+    name: "มานี มีสุข",
+    role: "staff",
+    departmentId: "dept-hr",
+  },
+  ...MOCK_OFFICERS,
+  ...MOCK_MANAGERS,
+  MOCK_ADMIN_USER,
+  {
+    id: "staff-legacy",
+    username: "staff_legacy",
+    name: "ผู้ใช้เก่า",
+    role: "staff",
+    departmentId: "dept-ops",
+    deletedAt: "2024-06-05T09:15:00",
+  },
+];
+
+export const INITIAL_MANAGED_DEPARTMENTS: ManagedDepartment[] = [
+  { id: "dept-it", name: "เทคโนโลยีสารสนเทศ", shortName: "IT", colorIndex: 0 },
+  { id: "dept-hr", name: "ทรัพยากรบุคคล", shortName: "HR", colorIndex: 1 },
+  { id: "dept-finance", name: "การเงิน", shortName: "Finance", colorIndex: 2 },
+  { id: "dept-ops", name: "ปฏิบัติการ", shortName: "Ops", colorIndex: 3 },
+  { id: "dept-admin", name: "บริหารทั่วไป", shortName: "Admin", colorIndex: 0 },
+  { id: "dept-old", name: "แผนกเลิกใช้", shortName: "Old", deletedAt: "2024-05-20T11:00:00" },
+];
+
+export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
+  {
+    id: "log-001",
+    action: "อัปเดตสิทธิ์",
+    target: "officer2",
+    actorId: "admin-001",
+    actorName: "ผู้ดูแล ระบบ",
+    at: "2024-06-10T10:00:00",
+    detail: "เปลี่ยนสิทธิ์เป็น เจ้าหน้าที่",
+  },
+  {
+    id: "log-002",
+    action: "สร้างแผนก",
+    target: "dept-ops",
+    actorId: "admin-001",
+    actorName: "ผู้ดูแล ระบบ",
+    at: "2024-06-08T14:30:00",
+    detail: "ชื่อแผนก: ปฏิบัติการ",
+  },
+  {
+    id: "log-003",
+    action: "ลบผู้ใช้",
+    target: "staff-legacy",
+    actorId: "admin-001",
+    actorName: "ผู้ดูแล ระบบ",
+    at: "2024-06-05T09:15:00",
+    detail: "ลบผู้ใช้ ผู้ใช้เก่า",
   },
 ];
 
@@ -318,7 +407,12 @@ export const INITIAL_TICKETS: Ticket[] = [
     statusHistory: [
       { status: "รอรับเรื่อง", at: "2026-06-12T08:00:00.000Z" },
       { status: "กำลังดำเนินการ", at: "2026-06-12T10:00:00.000Z" },
-      { status: "ปฏิเสธ", note: "งบประมาณไม่เพียงพอ กรุณาส่งคำร้องใหม่พร้อมเหตุผลทางธุรกิจ", at: "2026-06-13T14:00:00.000Z" },
+      { status: "รออนุมัติ", note: "ส่งเรื่องให้ผู้จัดการพิจารณา", at: "2026-06-13T10:00:00.000Z" },
+      {
+        status: "ปฏิเสธ",
+        note: "สมศักดิ์ ผู้จัดการ ปฏิเสธ: งบประมาณไม่เพียงพอ กรุณาส่งคำร้องใหม่พร้อมเหตุผลทางธุรกิจ",
+        at: "2026-06-13T14:00:00.000Z",
+      },
     ],
     createdAt: "2026-06-12T08:00:00.000Z",
     updatedAt: "2026-06-13T14:00:00.000Z",
@@ -431,7 +525,12 @@ export const INITIAL_TICKETS: Ticket[] = [
     statusHistory: [
       { status: "รอรับเรื่อง", at: "2026-06-10T07:00:00.000Z" },
       { status: "กำลังดำเนินการ", at: "2026-06-11T02:00:00.000Z" },
-      { status: "เสร็จสมบูรณ์", note: "ส่งมอบบัตรเรียบร้อย", at: "2026-06-12T09:00:00.000Z" },
+      { status: "รออนุมัติ", note: "ส่งเรื่องให้ผู้จัดการอนุมัติ", at: "2026-06-11T08:00:00.000Z" },
+      {
+        status: "เสร็จสมบูรณ์",
+        note: "วราภรณ์ ผู้จัดการ อนุมัติคำร้อง · ส่งมอบบัตรเรียบร้อย",
+        at: "2026-06-12T09:00:00.000Z",
+      },
     ],
     createdAt: "2026-06-10T07:00:00.000Z",
     updatedAt: "2026-06-12T09:00:00.000Z",
@@ -657,6 +756,35 @@ export const INITIAL_TICKETS: Ticket[] = [
     ],
     createdAt: "2026-06-13T04:00:00.000Z",
     updatedAt: "2026-06-15T08:00:00.000Z",
+  },
+  {
+    id: "tkt-021",
+    ticketNo: "IOC-2026-021",
+    title: "ติดตั้งแอนตี้ไวรัสบนเครื่องใหม่",
+    description: "เครื่องคอมพิวเตอร์ใหม่พนักงาน ขอติดตั้งและตั้งค่าแอนตี้ไวรัส",
+    priority: "ต่ำ",
+    status: "เสร็จสมบูรณ์",
+    departmentId: "dept-it",
+    departmentName: "เทคโนโลยีสารสนเทศ",
+    requesterId: "staff-002",
+    requesterName: "มานี มีสุข",
+    scheduledStartAt: "2026-06-10T02:00:00.000Z",
+    scheduledEndAt: "2026-06-10T05:00:00.000Z",
+    receivedById: "officer-001",
+    receivedByName: "วิชัย เจ้าหน้าที่",
+    assigneeId: "officer-001",
+    assigneeName: "วิชัย เจ้าหน้าที่",
+    assigneeDepartmentId: "dept-it",
+    attachments: [],
+    comments: [],
+    progressNotes: [],
+    statusHistory: [
+      { status: "รอรับเรื่อง", at: "2026-06-09T08:00:00.000Z" },
+      { status: "กำลังดำเนินการ", note: "วิชัย เจ้าหน้าที่ รับเรื่องแล้ว", at: "2026-06-09T10:00:00.000Z" },
+      { status: "เสร็จสมบูรณ์", note: "ติดตั้งและสแกนเรียบร้อย", at: "2026-06-10T14:00:00.000Z" },
+    ],
+    createdAt: "2026-06-09T08:00:00.000Z",
+    updatedAt: "2026-06-10T14:00:00.000Z",
   },
 ];
 

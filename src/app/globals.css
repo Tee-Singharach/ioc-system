@@ -62,27 +62,11 @@ body {
     @apply text-sm font-medium text-zinc-700;
   }
 
-  .ioc-meta-tile {
-    @apply flex gap-3 rounded-xl border border-zinc-100 bg-white px-4 py-3.5;
-  }
-
-  .ioc-icon-box {
-    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-500 ring-1 ring-zinc-200/80;
-  }
-
   .ioc-icon-box-brand {
     @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-600 ring-1 ring-zinc-200/80;
   }
 
-  .ioc-back-link {
-    @apply inline-flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-800;
-  }
-
   .ioc-file-row {
     @apply flex items-center gap-3 rounded-xl border border-zinc-100 bg-white px-3 py-2.5;
-  }
-
-  .ioc-prose-box {
-    @apply rounded-xl border border-zinc-100 bg-white px-4 py-3.5 text-sm leading-relaxed text-zinc-800;
   }
 }

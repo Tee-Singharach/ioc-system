@@ -48,7 +48,7 @@ const CreationFeedItem = memo(function CreationFeedItem({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-semibold text-zinc-900">{authorName}</span>
-          <time className="text-xs text-zinc-400">{formatRelativeTime(createdAt)}</time>
+          <time suppressHydrationWarning className="text-xs text-zinc-400">{formatRelativeTime(createdAt)}</time>
         </div>
         <p className="mt-2 rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
           {content}
@@ -88,7 +88,7 @@ const CommentFeedItem = memo(function CommentFeedItem({
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="text-sm font-semibold text-zinc-900">{comment.authorName}</span>
-            <time className="text-xs text-zinc-400">{formatRelativeTime(comment.createdAt)}</time>
+            <time suppressHydrationWarning className="text-xs text-zinc-400">{formatRelativeTime(comment.createdAt)}</time>
             {comment.updatedAt !== comment.createdAt && (
               <span className="text-xs text-zinc-400">(แก้ไขแล้ว)</span>
             )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Menu, X } from "lucide-react";
@@ -18,8 +18,28 @@ const BREADCRUMBS: Record<string, string> = {
   "/tickets/new": "สร้างคำร้องใหม่",
   "/officer/inbox": "กล่องงาน",
   "/officer/tickets": "คำร้องทั้งหมด",
+  "/manager/dashboard": "แดชบอร์ด",
+  "/manager/approvals": "รออนุมัติ",
+  "/manager/history": "ประวัติการอนุมัติ",
+  "/admin/users": "ผู้ใช้และบทบาท",
+  "/admin/departments": "จัดการแผนก",
+  "/admin/audit-logs": "Audit Log",
   "/settings": "การตั้งค่า",
 };
+
+function isTicketDetailPath(pathname: string) {
+  return (
+    /^\/tickets\/[^/]+$/.test(pathname) ||
+    /^\/officer\/tickets\/[^/]+$/.test(pathname) ||
+    /^\/manager\/tickets\/[^/]+$/.test(pathname)
+  );
+}
+
+function ticketDetailParent(pathname: string) {
+  if (pathname.startsWith("/officer")) return { href: "/officer/tickets", label: "คำร้องทั้งหมด" };
+  if (pathname.startsWith("/manager")) return { href: "/manager/approvals", label: "รออนุมัติ" };
+  return { href: "/tickets", label: "คำร้องทั้งหมด" };
+}
 
 function formatRelative(iso: string) {
   return new Date(iso).toLocaleString("th-TH", {
@@ -32,9 +52,16 @@ function formatRelative(iso: string) {
 
 function breadcrumbLabel(pathname: string) {
   if (BREADCRUMBS[pathname]) return BREADCRUMBS[pathname];
-  if (/^\/tickets\/[^/]+$/.test(pathname)) return "รายละเอียดคำร้อง";
-  if (/^\/officer\/tickets\/[^/]+$/.test(pathname)) return "รายละเอียดคำร้อง";
-  return "IOC System";
+  if (isTicketDetailPath(pathname)) return "รายละเอียดคำร้อง";
+  return null;
+}
+
+function isAdminPath(pathname: string) {
+  return pathname.startsWith("/admin/");
+}
+
+function adminBreadcrumbLabel(pathname: string) {
+  return BREADCRUMBS[pathname] ?? null;
 }
 
 interface AppNavbarProps {
@@ -42,7 +69,7 @@ interface AppNavbarProps {
   menuOpen?: boolean;
 }
 
-export function AppNavbar({ onMenuToggle, menuOpen = false }: AppNavbarProps) {
+export const AppNavbar = memo(function AppNavbar({ onMenuToggle, menuOpen = false }: AppNavbarProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -56,6 +83,10 @@ export function AppNavbar({ onMenuToggle, menuOpen = false }: AppNavbarProps) {
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
+
+  const label = breadcrumbLabel(pathname);
+  const detailParent = isTicketDetailPath(pathname) ? ticketDetailParent(pathname) : null;
+  const adminLabel = isAdminPath(pathname) ? adminBreadcrumbLabel(pathname) : null;
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-4 sm:px-6">
@@ -72,24 +103,30 @@ export function AppNavbar({ onMenuToggle, menuOpen = false }: AppNavbarProps) {
         </Button>
       </div>
 
-        {breadcrumbLabel(pathname) === "รายละเอียดคำร้อง" ? (
+        {detailParent && label === "รายละเอียดคำร้อง" ? (
           <nav aria-label="breadcrumb" className="hidden min-w-0 items-center gap-2 text-sm lg:flex">
             <Link
-              href={pathname.startsWith("/officer") ? "/officer/tickets" : "/tickets"}
+              href={detailParent.href}
               className="text-zinc-500 transition-colors hover:text-zinc-800"
             >
-              {pathname.startsWith("/officer") ? "คำร้องทั้งหมด" : "คำร้องทั้งหมด"}
+              {detailParent.label}
             </Link>
             <span className="text-zinc-300" aria-hidden>
               /
             </span>
             <span className="truncate font-medium text-zinc-700">รายละเอียดคำร้อง</span>
           </nav>
-        ) : (
-          <p className="hidden truncate text-sm font-medium text-zinc-500 lg:block">
-            {breadcrumbLabel(pathname)}
-          </p>
-        )}
+        ) : adminLabel ? (
+          <nav aria-label="breadcrumb" className="hidden min-w-0 items-center gap-2 text-sm lg:flex">
+            <span className="text-zinc-500">ผู้ดูแลระบบ</span>
+            <span className="text-zinc-300" aria-hidden>
+              /
+            </span>
+            <span className="truncate font-medium text-zinc-700">{adminLabel}</span>
+          </nav>
+        ) : label ? (
+          <p className="hidden truncate text-sm font-medium text-zinc-500 lg:block">{label}</p>
+        ) : null}
 
       <div ref={rootRef} className="relative ml-auto">
           <Button
@@ -139,4 +176,4 @@ export function AppNavbar({ onMenuToggle, menuOpen = false }: AppNavbarProps) {
         </div>
     </header>
   );
-}
+});

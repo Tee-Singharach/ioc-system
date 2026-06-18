@@ -1,12 +1,24 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClipboardList, Inbox, Plus } from "lucide-react";
-import { useMemo } from "react";
+import {
+  Building2,
+  ClipboardCheck,
+  ClipboardList,
+  History,
+  Inbox,
+  LayoutDashboard,
+  Plus,
+  ScrollText,
+  Users,
+} from "lucide-react";
 import { getInboxPendingTickets, getOfficerTickets } from "@/lib/officer-access";
+import { getPendingApprovalTickets } from "@/lib/manager-access";
+import type { User } from "@/lib/types/ticket";
 import { useMockAuth } from "@/providers/mock-auth-provider";
-import { useMockTickets } from "@/providers/mock-ticket-provider";
+import { useTickets } from "@/providers/mock-ticket-provider";
 
 const staffNavItems = [
   { href: "/tickets", label: "คำร้องของฉัน", icon: ClipboardList },
@@ -18,12 +30,32 @@ const officerNavItems = [
   { href: "/officer/tickets", label: "คำร้องทั้งหมด", icon: ClipboardList },
 ];
 
+const managerNavItems = [
+  { href: "/manager/dashboard", label: "แดชบอร์ด", icon: LayoutDashboard },
+  { href: "/manager/approvals", label: "รออนุมัติ", icon: ClipboardCheck },
+  { href: "/manager/history", label: "ประวัติการอนุมัติ", icon: History },
+];
+
+const adminNavItems = [
+  { href: "/admin/users", label: "ผู้ใช้และบทบาท", icon: Users },
+  { href: "/admin/departments", label: "จัดการแผนก", icon: Building2 },
+  { href: "/admin/audit-logs", label: "Audit log", icon: ScrollText },
+];
+
 function isActive(href: string, pathname: string) {
   if (href === "/tickets/new") return pathname === "/tickets/new";
   if (href === "/officer/inbox") return pathname === "/officer/inbox";
   if (href === "/officer/tickets") {
     return pathname === "/officer/tickets" || /^\/officer\/tickets\/[^/]+$/.test(pathname);
   }
+  if (href === "/manager/dashboard") return pathname === "/manager/dashboard";
+  if (href === "/manager/approvals") {
+    return pathname === "/manager/approvals" || /^\/manager\/tickets\/[^/]+$/.test(pathname);
+  }
+  if (href === "/manager/history") return pathname === "/manager/history";
+  if (href === "/admin/users") return pathname === "/admin/users";
+  if (href === "/admin/departments") return pathname === "/admin/departments";
+  if (href === "/admin/audit-logs") return pathname === "/admin/audit-logs";
   return pathname === "/tickets" || /^\/tickets\/(?!new)[^/]+$/.test(pathname);
 }
 
@@ -68,19 +100,94 @@ function NavLink({
   );
 }
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
-  const { user } = useMockAuth();
-  const { tickets } = useMockTickets();
+function NavList({
+  items,
+  pathname,
+  badgeFor,
+  onNavigate,
+}: {
+  items: typeof staffNavItems;
+  pathname: string;
+  badgeFor?: (href: string) => number | undefined;
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      {items.map((item) => (
+        <NavLink
+          key={item.href}
+          {...item}
+          active={isActive(item.href, pathname)}
+          badge={badgeFor?.(item.href)}
+          onNavigate={onNavigate}
+        />
+      ))}
+    </>
+  );
+}
 
-  const officerBadges = useMemo(() => {
-    if (!user || user.role !== "officer") return { inbox: 0, all: 0 };
+function OfficerSidebarLinks({
+  user,
+  pathname,
+  onNavigate,
+}: {
+  user: User;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const tickets = useTickets();
+  const badges = useMemo(() => {
     const pending = getInboxPendingTickets(tickets, user).length;
     const all = getOfficerTickets(tickets, user).length;
     return { inbox: pending, all };
   }, [tickets, user]);
 
-  const items = user?.role === "officer" ? officerNavItems : staffNavItems;
+  return (
+    <NavList
+      items={officerNavItems}
+      pathname={pathname}
+      onNavigate={onNavigate}
+      badgeFor={(href) =>
+        href === "/officer/inbox" ? badges.inbox : href === "/officer/tickets" ? badges.all : undefined
+      }
+    />
+  );
+}
+
+function ManagerSidebarLinks({
+  user,
+  pathname,
+  onNavigate,
+}: {
+  user: User;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const tickets = useTickets();
+  const pending = useMemo(
+    () => getPendingApprovalTickets(tickets, user).length,
+    [tickets, user],
+  );
+
+  return (
+    <NavList
+      items={managerNavItems}
+      pathname={pathname}
+      onNavigate={onNavigate}
+      badgeFor={(href) => (href === "/manager/approvals" ? pending : undefined)}
+    />
+  );
+}
+
+function AdminSidebarLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  return (
+    <NavList items={adminNavItems} pathname={pathname} onNavigate={onNavigate} />
+  );
+}
+
+function SidebarNavInner({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
+  const { user } = useMockAuth();
 
   return (
     <nav className="h-full min-h-0 overflow-y-auto px-4 py-4" aria-label="นำทาง">
@@ -88,24 +195,18 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         เมนูหลัก
       </p>
       <div className="flex flex-col gap-1">
-        {items.map((item) => (
-          <NavLink
-            key={item.href}
-            {...item}
-            active={isActive(item.href, pathname)}
-            badge={
-              user?.role === "officer"
-                ? item.href === "/officer/inbox"
-                  ? officerBadges.inbox
-                  : item.href === "/officer/tickets"
-                    ? officerBadges.all
-                    : undefined
-                : undefined
-            }
-            onNavigate={onNavigate}
-          />
-        ))}
+        {user?.role === "admin" ? (
+          <AdminSidebarLinks pathname={pathname} onNavigate={onNavigate} />
+        ) : user?.role === "manager" ? (
+          <ManagerSidebarLinks user={user} pathname={pathname} onNavigate={onNavigate} />
+        ) : user?.role === "officer" ? (
+          <OfficerSidebarLinks user={user} pathname={pathname} onNavigate={onNavigate} />
+        ) : (
+          <NavList items={staffNavItems} pathname={pathname} onNavigate={onNavigate} />
+        )}
       </div>
     </nav>
   );
 }
+
+export const SidebarNav = memo(SidebarNavInner);

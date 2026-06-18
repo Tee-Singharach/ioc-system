@@ -38,6 +38,8 @@ export function canOfficerViewTicket(ticket: Ticket, officer: Pick<User, "id" | 
 
 export function homePathForRole(role: User["role"]): string {
   if (role === "officer") return "/officer/inbox";
+  if (role === "manager") return "/manager/dashboard";
+  if (role === "admin") return "/admin/users";
   if (role === "staff") return "/tickets";
   return "/login";
 }
