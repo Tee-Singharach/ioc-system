@@ -3,7 +3,8 @@
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@/lib/types/ticket";
-import { MOCK_STAFF_USER } from "@/lib/mock/data";
+import { resolveMockUser } from "@/lib/mock/resolve-user";
+import { homePathForRole } from "@/lib/officer-access";
 import { clearSession, getServerSessionSnapshot, getSessionRaw, parseSession, setSession, subscribeSession } from "@/lib/mock/session";
 
 interface MockAuthContextValue {
@@ -11,6 +12,7 @@ interface MockAuthContextValue {
   isLoading: boolean;
   login: (username: string, password: string) => void;
   logout: () => void;
+  updateName: (name: string) => void;
 }
 
 const MockAuthContext = createContext<MockAuthContextValue | null>(null);
@@ -28,9 +30,9 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback((username: string, password: string) => {
     // TODO: replace with real JWT authentication (password: ${password})
     void password;
-    const sessionUser: User = { ...MOCK_STAFF_USER, username: username || MOCK_STAFF_USER.username };
+    const sessionUser = resolveMockUser(username);
     setSession(sessionUser);
-    router.push("/tickets");
+    router.push(homePathForRole(sessionUser.role));
   }, [router]);
 
   const logout = useCallback(() => {
@@ -38,8 +40,19 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   }, [router]);
 
+  const updateName = useCallback((name: string) => {
+    const current = parseSession(getSessionRaw());
+    if (!current) return;
+    setSession({ ...current, name: name.trim() });
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, isLoading, login, logout, updateName }),
+    [user, isLoading, login, logout, updateName],
+  );
+
   return (
-    <MockAuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <MockAuthContext.Provider value={value}>
       {children}
     </MockAuthContext.Provider>
   );

@@ -1,18 +1,27 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import type { Ticket, TicketFormData, TicketStatus } from "@/lib/types/ticket";
-import { generateId, generateTicketNo, INITIAL_TICKETS, MOCK_DEPARTMENTS } from "@/lib/mock/data";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import type { Attachment, Ticket, TicketFormData, TicketStatus } from "@/lib/types/ticket";
+import { generateId, generateTicketNo, INITIAL_TICKETS, MOCK_DEPARTMENTS, MOCK_OFFICERS } from "@/lib/mock/data";
+import { getOfficerTickets } from "@/lib/officer-access";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 
 interface MockTicketContextValue {
   tickets: Ticket[];
   getTicket: (id: string) => Ticket | undefined;
   getMyTickets: (requesterId: string) => Ticket[];
+  getOfficerTickets: (officerId: string, departmentId: string) => Ticket[];
   createTicket: (data: TicketFormData) => Ticket;
   updateTicket: (id: string, data: TicketFormData) => void;
   cancelTicket: (id: string) => void;
   resubmitTicket: (id: string, data: TicketFormData) => void;
+  receiveTicket: (id: string) => void;
+  updateTicketStatus: (id: string, status: TicketStatus) => void;
+  assignTicket: (id: string, officerId: string) => void;
+  addProgressNote: (id: string, content: string) => void;
+  addComment: (ticketId: string, content: string, attachments?: Attachment[]) => void;
+  updateComment: (ticketId: string, commentId: string, content: string) => void;
+  deleteComment: (ticketId: string, commentId: string) => void;
 }
 
 const MockTicketContext = createContext<MockTicketContextValue | null>(null);
@@ -35,6 +44,12 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
 
   const getMyTickets = useCallback(
     (requesterId: string) => tickets.filter((t) => t.requesterId === requesterId),
+    [tickets],
+  );
+
+  const getOfficerTicketsForUser = useCallback(
+    (officerId: string, departmentId: string) =>
+      getOfficerTickets(tickets, { id: officerId, departmentId }),
     [tickets],
   );
 
@@ -62,6 +77,8 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
         comments: [],
         progressNotes: [],
         statusHistory: [{ status: "รอรับเรื่อง", at: now }],
+        scheduledStartAt: data.scheduledStartAt,
+        scheduledEndAt: data.scheduledEndAt,
         createdAt: now,
         updatedAt: now,
       };
@@ -89,6 +106,8 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
                 name,
                 size: 0,
               })),
+              scheduledStartAt: data.scheduledStartAt,
+              scheduledEndAt: data.scheduledEndAt,
               updatedAt: now,
             }
           : t,
@@ -126,6 +145,8 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
                     name,
                     size: 0,
                   })),
+                  scheduledStartAt: data.scheduledStartAt,
+                  scheduledEndAt: data.scheduledEndAt,
                   status: "รอรับเรื่อง",
                 },
                 "รอรับเรื่อง",
@@ -138,10 +159,199 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const addComment = useCallback(
+    (ticketId: string, content: string, attachments?: Attachment[]) => {
+      if (!user) throw new Error("Not authenticated");
+      const now = new Date().toISOString();
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId
+            ? {
+                ...t,
+                comments: [
+                  ...t.comments,
+                  {
+                    id: generateId("cmt"),
+                    ticketId,
+                    authorId: user.id,
+                    authorName: user.name,
+                    content,
+                    ...(attachments?.length ? { attachments } : {}),
+                    createdAt: now,
+                    updatedAt: now,
+                  },
+                ],
+                updatedAt: now,
+              }
+            : t,
+        ),
+      );
+    },
+    [user],
+  );
+
+  const updateComment = useCallback(
+    (ticketId: string, commentId: string, content: string) => {
+      if (!user) throw new Error("Not authenticated");
+      const now = new Date().toISOString();
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId
+            ? {
+                ...t,
+                comments: t.comments.map((c) =>
+                  c.id === commentId && c.authorId === user.id
+                    ? { ...c, content, updatedAt: now }
+                    : c,
+                ),
+                updatedAt: now,
+              }
+            : t,
+        ),
+      );
+    },
+    [user],
+  );
+
+  const deleteComment = useCallback(
+    (ticketId: string, commentId: string) => {
+      if (!user) throw new Error("Not authenticated");
+      const now = new Date().toISOString();
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId
+            ? {
+                ...t,
+                comments: t.comments.filter((c) => !(c.id === commentId && c.authorId === user.id)),
+                updatedAt: now,
+              }
+            : t,
+        ),
+      );
+    },
+    [user],
+  );
+
+  const receiveTicket = useCallback(
+    (id: string) => {
+      if (!user) throw new Error("Not authenticated");
+      setTickets((prev) =>
+        prev.map((t) => {
+          if (t.id !== id || t.status !== "รอรับเรื่อง") return t;
+          const note = `${user.name} รับเรื่องแล้ว`;
+          return {
+            ...appendHistory(t, "กำลังดำเนินการ", note),
+            receivedById: user.id,
+            receivedByName: user.name,
+            assigneeId: user.id,
+            assigneeName: user.name,
+            assigneeDepartmentId: user.departmentId,
+          };
+        }),
+      );
+    },
+    [user],
+  );
+
+  const updateTicketStatus = useCallback(
+    (id: string, status: TicketStatus) => {
+      if (!user) throw new Error("Not authenticated");
+      setTickets((prev) =>
+        prev.map((t) => {
+          if (t.id !== id || t.status === status) return t;
+          return appendHistory(t, status, `${user.name} เปลี่ยนสถานะเป็น ${status}`);
+        }),
+      );
+    },
+    [user],
+  );
+
+  const assignTicket = useCallback((id: string, officerId: string) => {
+    const officer = MOCK_OFFICERS.find((o) => o.id === officerId);
+    if (!officer) return;
+    setTickets((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        const note = `มอบหมายให้ ${officer.name}`;
+        return {
+          ...t,
+          assigneeId: officer.id,
+          assigneeName: officer.name,
+          assigneeDepartmentId: officer.departmentId,
+          statusHistory: [...t.statusHistory, { status: t.status, note, at: new Date().toISOString() }],
+          updatedAt: new Date().toISOString(),
+        };
+      }),
+    );
+  }, []);
+
+  const addProgressNote = useCallback(
+    (id: string, content: string) => {
+      if (!user) throw new Error("Not authenticated");
+      const now = new Date().toISOString();
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                progressNotes: [
+                  ...t.progressNotes,
+                  {
+                    id: generateId("prg"),
+                    authorId: user.id,
+                    authorName: user.name,
+                    content,
+                    createdAt: now,
+                  },
+                ],
+                updatedAt: now,
+              }
+            : t,
+        ),
+      );
+    },
+    [user],
+  );
+
+  const value = useMemo(
+    () => ({
+      tickets,
+      getTicket,
+      getMyTickets,
+      getOfficerTickets: getOfficerTicketsForUser,
+      createTicket,
+      updateTicket,
+      cancelTicket,
+      resubmitTicket,
+      receiveTicket,
+      updateTicketStatus,
+      assignTicket,
+      addProgressNote,
+      addComment,
+      updateComment,
+      deleteComment,
+    }),
+    [
+      tickets,
+      getTicket,
+      getMyTickets,
+      getOfficerTicketsForUser,
+      createTicket,
+      updateTicket,
+      cancelTicket,
+      resubmitTicket,
+      receiveTicket,
+      updateTicketStatus,
+      assignTicket,
+      addProgressNote,
+      addComment,
+      updateComment,
+      deleteComment,
+    ],
+  );
+
   return (
-    <MockTicketContext.Provider
-      value={{ tickets, getTicket, getMyTickets, createTicket, updateTicket, cancelTicket, resubmitTicket }}
-    >
+    <MockTicketContext.Provider value={value}>
       {children}
     </MockTicketContext.Provider>
   );

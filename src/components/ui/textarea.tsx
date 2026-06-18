@@ -9,7 +9,7 @@ export function Textarea({ label, error, className = "", id, ...props }: Textare
   const textareaId = id ?? label?.replace(/\s/g, "-").toLowerCase();
   return (
     <div className="flex flex-col gap-1.5">
-      {label && <label htmlFor={textareaId} className="text-sm font-medium text-zinc-700">{label}</label>}
+      {label && <label htmlFor={textareaId} className="ioc-label">{label}</label>}
       <textarea
         id={textareaId}
         className={`min-h-24 resize-y rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 ${error ? "border-red-400" : ""} ${className}`}

@@ -27,6 +27,7 @@ export interface Attachment {
   id: string;
   name: string;
   size: number;
+  url?: string;
 }
 
 export interface ProgressNote {
@@ -43,6 +44,7 @@ export interface Comment {
   authorId: string;
   authorName: string;
   content: string;
+  attachments?: Attachment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -73,6 +75,8 @@ export interface Ticket {
   comments: Comment[];
   progressNotes: ProgressNote[];
   statusHistory: StatusHistoryEntry[];
+  scheduledStartAt: string;
+  scheduledEndAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -99,5 +103,7 @@ export interface TicketFormData {
   description: string;
   priority: Priority;
   departmentId: string;
+  scheduledStartAt: string;
+  scheduledEndAt: string;
   attachmentNames: string[];
 }

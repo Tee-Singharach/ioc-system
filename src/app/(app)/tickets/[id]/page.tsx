@@ -2,35 +2,61 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Paperclip } from "lucide-react";
+import { ArrowLeft, MoreVertical, Pencil, RotateCcw, XCircle } from "lucide-react";
+import { TicketAttachmentList } from "@/components/tickets/ticket-attachment-list";
 import { canCancel, canEdit, canResubmit } from "@/lib/ticket-rules";
+import { formatShortDate, userInitials } from "@/lib/ticket-progress";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
-import { TicketTimeline } from "@/components/tickets/ticket-timeline";
+import { TicketStepper } from "@/components/tickets/ticket-stepper";
+import { TicketComments } from "@/components/tickets/ticket-comments";
 import { TicketForm } from "@/components/tickets/ticket-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { Card, CardBody } from "@/components/ui/card";
 
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+type DialogType = "edit" | "resubmit" | "cancel" | null;
+
+function PersonField({
+  label,
+  name,
+  tone,
+}: {
+  label: string;
+  name: string;
+  tone: "blue" | "amber" | "none";
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-zinc-500">{label}</p>
+      <div className="mt-1.5 flex items-center gap-2">
+        {tone !== "none" && name !== "—" && (
+          <div
+            aria-hidden
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+              tone === "blue" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
+            }`}
+          >
+            {userInitials(name)}
+          </div>
+        )}
+        <p className="text-sm font-medium text-zinc-900">{name}</p>
+      </div>
+    </div>
+  );
 }
 
 export default function StaffTicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const { user } = useMockAuth();
-  const { getTicket, updateTicket, cancelTicket, resubmitTicket } = useMockTickets();
+  const { getTicket, updateTicket, cancelTicket, resubmitTicket, addComment, updateComment, deleteComment } =
+    useMockTickets();
   const ticket = getTicket(id);
   const [mode, setMode] = useState<"view" | "edit" | "resubmit">("view");
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [dialog, setDialog] = useState<DialogType>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   if (!ticket || (user && ticket.requesterId !== user.id)) {
     return (
@@ -44,138 +70,235 @@ export default function StaffTicketDetailPage({ params }: { params: Promise<{ id
   }
 
   const editing = mode === "edit" || mode === "resubmit";
+  const showActionsMenu = !editing && (canEdit(ticket) || canCancel(ticket));
+  const responsible = ticket.assigneeName ?? ticket.receivedByName ?? "—";
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <Link href="/tickets" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700">
+    <div className="space-y-6">
+      <Link
+        href="/tickets"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-800"
+      >
         <ArrowLeft className="h-4 w-4" />
-        กลับ
+        ย้อนกลับ
       </Link>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-blue-600">{ticket.ticketNo}</p>
-            <h1 className="mt-1 text-xl font-bold text-zinc-900">{ticket.title}</h1>
-            <p className="mt-1 text-sm text-zinc-500">สร้างเมื่อ {formatDateTime(ticket.createdAt)}</p>
-          </div>
-          <div className="flex gap-2">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-sm font-semibold text-zinc-600">{ticket.ticketNo}</span>
             <StatusBadge status={ticket.status} />
             <PriorityBadge priority={ticket.priority} />
           </div>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+            {ticket.title}
+          </h1>
         </div>
-
-        {!editing && (
-          <>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-sm font-medium text-zinc-500">แผนก</p>
-                <p className="mt-1 text-sm">{ticket.departmentName}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-zinc-500">ผู้รับผิดชอบ</p>
-                <p className="mt-1 text-sm">{ticket.assigneeName ?? "—"}</p>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <p className="text-sm font-medium text-zinc-500">รายละเอียด</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-800">{ticket.description}</p>
-            </div>
-
-            {ticket.attachments.length > 0 && (
-              <div className="mt-4">
-                <p className="text-sm font-medium text-zinc-500">ไฟล์แนบ</p>
-                <ul className="mt-2 space-y-1">
-                  {ticket.attachments.map((att) => (
-                    <li key={att.id} className="flex items-center gap-2 text-sm text-zinc-700">
-                      <Paperclip className="h-3.5 w-3.5 text-zinc-400" />
-                      {att.name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+        {showActionsMenu && (
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              aria-label="เมนูเพิ่มเติม"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+            >
+              <MoreVertical className="h-5 w-5" aria-hidden />
+            </button>
+            {menuOpen && (
+              <>
+                <button
+                  type="button"
+                  aria-label="ปิดเมนู"
+                  className="fixed inset-0 z-10"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-lg"
+                >
+                  {canEdit(ticket) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setDialog("edit");
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                    >
+                      <Pencil className="h-4 w-4 text-zinc-400" aria-hidden />
+                      แก้ไขคำร้อง
+                    </button>
+                  )}
+                  {canCancel(ticket) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setDialog("cancel");
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                    >
+                      <XCircle className="h-4 w-4" aria-hidden />
+                      ยกเลิกคำร้อง
+                    </button>
+                  )}
+                </div>
+              </>
             )}
+          </div>
+        )}
+      </div>
 
-            <div className="mt-6 flex flex-wrap gap-2 border-t border-zinc-100 pt-4">
-              {canEdit(ticket) && (
-                <Button variant="secondary" onClick={() => setMode("edit")}>
-                  แก้ไข
-                </Button>
+      {!editing ? (
+        <>
+          <Card>
+            <CardBody className="space-y-6 p-5 sm:p-6">
+              <TicketStepper status={ticket.status} history={ticket.statusHistory} />
+
+              <div className="border-t border-zinc-100 pt-6">
+                <h2 className="text-sm font-semibold text-zinc-900">รายละเอียด</h2>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-700 whitespace-pre-wrap">
+                  {ticket.description}
+                </p>
+              </div>
+
+              <div className="grid gap-5 border-t border-zinc-100 pt-6 sm:grid-cols-2 lg:grid-cols-3">
+                <PersonField label="ผู้ยื่น" name={ticket.requesterName} tone="blue" />
+                <PersonField label="ผู้รับผิดชอบ" name={responsible} tone="amber" />
+                <PersonField label="ผู้อนุมัติ" name="—" tone="none" />
+                <div>
+                  <p className="text-xs font-medium text-zinc-500">ฝ่าย</p>
+                  <p className="mt-1.5 text-sm font-medium text-zinc-900">{ticket.departmentName}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500">วันที่สร้าง</p>
+                  <p className="mt-1.5 text-sm font-medium text-zinc-900">
+                    {formatShortDate(ticket.createdAt)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500">วันกำหนด</p>
+                  <p className="mt-1.5 text-sm font-medium text-zinc-900">
+                    {formatShortDate(ticket.scheduledEndAt)}
+                  </p>
+                </div>
+              </div>
+
+              {ticket.attachments.length > 0 && (
+                <div className="border-t border-zinc-100 pt-6">
+                  <h2 className="text-sm font-semibold text-zinc-900">ไฟล์แนบ</h2>
+                  <div className="mt-3">
+                    <TicketAttachmentList attachments={ticket.attachments} />
+                  </div>
+                </div>
               )}
+
               {canResubmit(ticket) && (
-                <Button onClick={() => setMode("resubmit")}>ส่งคำร้องใหม่</Button>
-              )}
-              {canCancel(ticket) && !showCancelConfirm && (
-                <Button variant="danger" onClick={() => setShowCancelConfirm(true)}>
-                  ยกเลิกคำร้อง
-                </Button>
-              )}
-              {showCancelConfirm && (
-                <div className="flex w-full items-center gap-2 rounded-lg bg-red-50 px-3 py-2">
-                  <span className="text-sm text-red-700">ยืนยันยกเลิกคำร้อง?</span>
-                  <Button
-                    variant="danger"
-                    onClick={() => {
-                      cancelTicket(ticket.id);
-                      setShowCancelConfirm(false);
-                    }}
-                  >
-                    ยืนยัน
-                  </Button>
-                  <Button variant="secondary" onClick={() => setShowCancelConfirm(false)}>
-                    ไม่ยกเลิก
+                <div className="border-t border-zinc-100 pt-6">
+                  <Button type="button" onClick={() => setDialog("resubmit")}>
+                    <RotateCcw className="h-4 w-4" aria-hidden />
+                    ส่งคำร้องใหม่
                   </Button>
                 </div>
               )}
+            </CardBody>
+          </Card>
+
+          {user && (
+            <Card>
+              <CardBody className="p-5 sm:p-6">
+                <TicketComments
+                  comments={ticket.comments}
+                  currentUserId={user.id}
+                  creationNote={{
+                    authorName: ticket.requesterName,
+                    createdAt: ticket.createdAt,
+                    content: "สร้างคำร้องและส่งเข้าระบบ",
+                  }}
+                  onAdd={(content, attachments) => addComment(ticket.id, content, attachments)}
+                  onUpdate={(commentId, content) => updateComment(ticket.id, commentId, content)}
+                  onDelete={(commentId) => deleteComment(ticket.id, commentId)}
+                />
+              </CardBody>
+            </Card>
+          )}
+        </>
+      ) : (
+        <Card>
+          <CardBody className="p-5 sm:p-6">
+            <h2 className="text-base font-semibold text-zinc-900">
+              {mode === "resubmit" ? "ส่งคำร้องใหม่" : "แก้ไขคำร้อง"}
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              {mode === "resubmit"
+                ? "ปรับข้อมูลแล้วส่งเข้าระบบอีกครั้ง"
+                : "แก้ไขได้เฉพาะก่อนมีเจ้าหน้าที่รับเรื่อง"}
+            </p>
+            <div className="mt-5">
+              <TicketForm
+                initialData={{
+                  title: ticket.title,
+                  description: ticket.description,
+                  priority: ticket.priority,
+                  departmentId: ticket.departmentId,
+                  scheduledStartAt: ticket.scheduledStartAt,
+                  scheduledEndAt: ticket.scheduledEndAt,
+                  attachmentNames: ticket.attachments.map((a) => a.name),
+                }}
+                submitLabel={mode === "resubmit" ? "ส่งคำร้องใหม่" : "บันทึกการแก้ไข"}
+                onSubmit={(data) => {
+                  if (mode === "resubmit") resubmitTicket(ticket.id, data);
+                  else updateTicket(ticket.id, data);
+                  setMode("view");
+                }}
+                onCancel={() => setMode("view")}
+              />
             </div>
-          </>
-        )}
-
-        {editing && (
-          <div className="mt-6 border-t border-zinc-100 pt-6">
-            <TicketForm
-              initialData={{
-                title: ticket.title,
-                description: ticket.description,
-                priority: ticket.priority,
-                departmentId: ticket.departmentId,
-                attachmentNames: ticket.attachments.map((a) => a.name),
-              }}
-              submitLabel={mode === "resubmit" ? "ส่งคำร้องใหม่" : "บันทึกการแก้ไข"}
-              onSubmit={(data) => {
-                if (mode === "resubmit") {
-                  resubmitTicket(ticket.id, data);
-                } else {
-                  updateTicket(ticket.id, data);
-                }
-                setMode("view");
-              }}
-              onCancel={() => setMode("view")}
-            />
-          </div>
-        )}
-      </div>
-
-      {ticket.progressNotes.length > 0 && (
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-base font-semibold text-zinc-900">ความคืบหน้าจากเจ้าหน้าที่</h2>
-          <div className="space-y-3">
-            {ticket.progressNotes.map((note) => (
-              <div key={note.id} className="rounded-lg border border-zinc-100 bg-zinc-50 p-4">
-                <p className="text-sm font-medium text-zinc-800">{note.authorName}</p>
-                <p className="mt-0.5 text-xs text-zinc-400">{formatDateTime(note.createdAt)}</p>
-                <p className="mt-2 text-sm text-zinc-700">{note.content}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+          </CardBody>
+        </Card>
       )}
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-base font-semibold text-zinc-900">ติดตามสถานะ</h2>
-        <TicketTimeline history={ticket.statusHistory} />
-      </div>
+      <ConfirmModal
+        open={dialog === "edit"}
+        title="แก้ไขคำร้อง"
+        description="ต้องการแก้ไขข้อมูลคำร้องนี้หรือไม่? การแก้ไขได้เฉพาะก่อนมีเจ้าหน้าที่รับเรื่อง"
+        confirmLabel="แก้ไข"
+        onConfirm={() => {
+          setDialog(null);
+          setMode("edit");
+        }}
+        onCancel={() => setDialog(null)}
+      />
+
+      <ConfirmModal
+        open={dialog === "resubmit"}
+        title="ส่งคำร้องใหม่"
+        description="ต้องการส่งคำร้องนี้เข้าระบบอีกครั้งหรือไม่? คุณสามารถปรับข้อมูลก่อนส่งได้"
+        confirmLabel="ดำเนินการต่อ"
+        onConfirm={() => {
+          setDialog(null);
+          setMode("resubmit");
+        }}
+        onCancel={() => setDialog(null)}
+      />
+
+      <ConfirmModal
+        open={dialog === "cancel"}
+        title="ยกเลิกคำร้อง"
+        description="ยืนยันยกเลิกคำร้องนี้หรือไม่? เมื่อยกเลิกแล้วจะไม่สามารถดำเนินการต่อได้"
+        confirmLabel="ยืนยันยกเลิก"
+        cancelLabel="ไม่ยกเลิก"
+        variant="danger"
+        onConfirm={() => {
+          cancelTicket(ticket.id);
+          setDialog(null);
+        }}
+        onCancel={() => setDialog(null)}
+      />
     </div>
   );
 }

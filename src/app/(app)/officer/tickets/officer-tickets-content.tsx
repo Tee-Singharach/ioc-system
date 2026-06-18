@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import type { Priority, Ticket, TicketStatus } from "@/lib/types/ticket";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { Priority, Ticket } from "@/lib/types/ticket";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
 import { TicketFilterBar } from "@/components/tickets/ticket-filters";
@@ -28,9 +27,9 @@ function countByTab(tickets: Ticket[]): Record<StatusTab, number> {
   return counts;
 }
 
-export default function StaffTicketsPage() {
+export default function OfficerTicketsContent() {
   const { user } = useMockAuth();
-  const { getMyTickets } = useMockTickets();
+  const { getOfficerTickets } = useMockTickets();
 
   const [search, setSearch] = useState("");
   const [statusTab, setStatusTab] = useState<StatusTab>("all");
@@ -38,15 +37,15 @@ export default function StaffTicketsPage() {
   const [priority, setPriority] = useState<Priority | "">("");
   const [page, setPage] = useState(1);
 
-  const myTickets = useMemo(
-    () => (user ? getMyTickets(user.id) : []),
-    [user, getMyTickets],
+  const officerTickets = useMemo(
+    () => (user ? getOfficerTickets(user.id, user.departmentId) : []),
+    [user, getOfficerTickets],
   );
 
-  const tabCounts = useMemo(() => countByTab(myTickets), [myTickets]);
+  const tabCounts = useMemo(() => countByTab(officerTickets), [officerTickets]);
 
   const filtered = useMemo(() => {
-    return myTickets.filter((t) => {
+    return officerTickets.filter((t) => {
       const q = search.toLowerCase();
       const matchSearch =
         !q ||
@@ -58,7 +57,7 @@ export default function StaffTicketsPage() {
       const matchPriority = !priority || t.priority === priority;
       return matchSearch && matchTab && matchDept && matchPriority;
     });
-  }, [myTickets, search, statusTab, departmentId, priority]);
+  }, [officerTickets, search, statusTab, departmentId, priority]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -69,17 +68,9 @@ export default function StaffTicketsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900">คำร้องของฉัน</h1>
-          <p className="mt-1 text-sm text-zinc-500">{filtered.length} รายการ</p>
-        </div>
-        <Link href="/tickets/new" className="shrink-0">
-          <Button>
-            <Plus className="h-4 w-4" />
-            สร้างคำร้องใหม่
-          </Button>
-        </Link>
+      <div>
+        <h1 className="text-2xl font-bold text-zinc-900">คำร้องทั้งหมด</h1>
+        <p className="mt-1 text-sm text-zinc-500">คำร้องในแผนกและงานที่มอบหมาย · {filtered.length} รายการ</p>
       </div>
 
       <Card>
@@ -107,7 +98,7 @@ export default function StaffTicketsPage() {
               setPage(1);
             }}
           />
-          <TicketTable tickets={paginated} />
+          <TicketTable tickets={paginated} hrefPrefix="/officer/tickets" emptyHint="ลองเปลี่ยนตัวกรอง" />
         </CardBody>
       </Card>
 
