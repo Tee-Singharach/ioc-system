@@ -43,13 +43,16 @@ export function getApprovalDecision(ticket: Ticket): {
 } | null {
   const pendingIdx = ticket.statusHistory.findIndex((h) => h.status === "รออนุมัติ");
   if (pendingIdx === -1) return null;
-  const decision = ticket.statusHistory
-    .slice(pendingIdx + 1)
-    .find((h) => h.status === "เสร็จสมบูรณ์" || h.status === "ปฏิเสธ");
-  if (!decision) return null;
-  return {
-    action: decision.status === "เสร็จสมบูรณ์" ? "approved" : "rejected",
-    at: decision.at,
-    note: decision.note,
-  };
+  const after = ticket.statusHistory.slice(pendingIdx + 1);
+  const rejected = after.find((h) => h.status === "ปฏิเสธ");
+  if (rejected) {
+    return { action: "rejected", at: rejected.at, note: rejected.note };
+  }
+  const approved = after.find(
+    (h) => h.status === "กำลังดำเนินการ" && h.note?.includes("อนุมัติ"),
+  );
+  if (approved) {
+    return { action: "approved", at: approved.at, note: approved.note };
+  }
+  return null;
 }

@@ -1,54 +1,62 @@
 "use client";
 
-import type { TicketStatus } from "@/lib/types/ticket";
+import {
+  WORKFLOW_FILTER_TABS,
+  type WorkflowFilterTab,
+} from "@/lib/ticket-workflow";
 
-export type StatusTab = "all" | TicketStatus;
-
-export const STATUS_TABS: { id: StatusTab; label: string }[] = [
-  { id: "all", label: "ทั้งหมด" },
-  { id: "รอรับเรื่อง", label: "คำร้องใหม่" },
-  { id: "กำลังดำเนินการ", label: "กำลังดำเนินการ" },
-  { id: "รออนุมัติ", label: "รออนุมัติ" },
-  { id: "เสร็จสมบูรณ์", label: "เสร็จสิ้น" },
-  { id: "ปฏิเสธ", label: "ปฏิเสธ" },
-];
+export type { WorkflowFilterTab as StatusTab };
 
 interface TicketStatusTabsProps {
-  active: StatusTab;
-  counts: Record<StatusTab, number>;
-  onChange: (tab: StatusTab) => void;
+  active: WorkflowFilterTab;
+  counts: Record<WorkflowFilterTab, number>;
+  onChange: (tab: WorkflowFilterTab) => void;
   className?: string;
 }
 
 export function TicketStatusTabs({ active, counts, onChange, className = "" }: TicketStatusTabsProps) {
   return (
     <div
-      className={`flex gap-1.5 overflow-x-auto ${className}`}
+      className={`-mx-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}
       role="tablist"
-      aria-label="กรองตามสถานะ"
+      aria-label="กรองตามขั้นตอนงาน"
     >
-      {STATUS_TABS.map((tab) => {
-        const selected = active === tab.id;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            onClick={() => onChange(tab.id)}
-            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              selected
-                ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
-                : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800"
-            }`}
-          >
-            {tab.label}
-            <span className={`ml-1 ${selected ? "text-blue-600" : "text-zinc-400"}`}>
-              {counts[tab.id]}
+      <div className="inline-flex min-w-min items-center gap-0.5 rounded-xl border border-zinc-200/80 bg-zinc-50 p-1">
+        {WORKFLOW_FILTER_TABS.map((tab) => {
+          const selected = active === tab.id;
+          const showDivider = tab.id === "rejected";
+          return (
+            <span key={tab.id} className="contents">
+              {showDivider && (
+                <span
+                  className="mx-0.5 h-5 w-px shrink-0 bg-zinc-200"
+                  aria-hidden
+                />
+              )}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => onChange(tab.id)}
+                className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all ${
+                  selected
+                    ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200/60"
+                    : "text-zinc-500 hover:text-zinc-800"
+                }`}
+              >
+                {tab.label}
+                <span
+                  className={`ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-md px-1.5 py-0.5 text-xs tabular-nums ${
+                    selected ? "bg-blue-50 text-blue-600" : "bg-zinc-100/80 text-zinc-400"
+                  }`}
+                >
+                  {counts[tab.id]}
+                </span>
+              </button>
             </span>
-          </button>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

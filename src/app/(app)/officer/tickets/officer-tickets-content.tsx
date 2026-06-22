@@ -2,38 +2,25 @@
 
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { Priority, Ticket } from "@/lib/types/ticket";
+import type { Priority } from "@/lib/types/ticket";
 import { getOfficerTickets } from "@/lib/officer-access";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useTickets } from "@/providers/mock-ticket-provider";
+import type { WorkflowFilterTab } from "@/lib/ticket-workflow";
+import { countByWorkflowFilterTab, matchesWorkflowFilterTab } from "@/lib/ticket-workflow";
 import { TicketFilterBar } from "@/components/tickets/ticket-filters";
-import type { StatusTab } from "@/components/tickets/ticket-status-tabs";
 import { TicketTable } from "@/components/tickets/ticket-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 
 const PAGE_SIZE = 8;
 
-function countByTab(tickets: Ticket[]): Record<StatusTab, number> {
-  const counts: Record<StatusTab, number> = {
-    all: tickets.length,
-    "รอรับเรื่อง": 0,
-    "รออนุมัติ": 0,
-    "กำลังดำเนินการ": 0,
-    "เสร็จสมบูรณ์": 0,
-    "ปฏิเสธ": 0,
-    "ยกเลิก": 0,
-  };
-  for (const t of tickets) counts[t.status]++;
-  return counts;
-}
-
 export default function OfficerTicketsContent() {
   const { user } = useMockAuth();
   const tickets = useTickets();
 
   const [search, setSearch] = useState("");
-  const [statusTab, setStatusTab] = useState<StatusTab>("all");
+  const [statusTab, setStatusTab] = useState<WorkflowFilterTab>("all");
   const [departmentId, setDepartmentId] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
   const [page, setPage] = useState(1);
@@ -43,7 +30,7 @@ export default function OfficerTicketsContent() {
     [user, tickets],
   );
 
-  const tabCounts = useMemo(() => countByTab(officerTickets), [officerTickets]);
+  const tabCounts = useMemo(() => countByWorkflowFilterTab(officerTickets), [officerTickets]);
 
   const filtered = useMemo(() => {
     return officerTickets.filter((t) => {
@@ -53,7 +40,7 @@ export default function OfficerTicketsContent() {
         t.title.toLowerCase().includes(q) ||
         t.ticketNo.toLowerCase().includes(q) ||
         t.requesterName.toLowerCase().includes(q);
-      const matchTab = statusTab === "all" || t.status === statusTab;
+      const matchTab = matchesWorkflowFilterTab(t, statusTab);
       const matchDept = !departmentId || t.departmentId === departmentId;
       const matchPriority = !priority || t.priority === priority;
       return matchSearch && matchTab && matchDept && matchPriority;
@@ -71,7 +58,9 @@ export default function OfficerTicketsContent() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900">คำร้องทั้งหมด</h1>
-        <p className="mt-1 text-sm text-zinc-500">คำร้องในแผนกและงานที่มอบหมาย · {filtered.length} รายการ</p>
+        <p className="mt-1 text-sm text-zinc-500">
+          ดูอย่างเดียว — คำร้องในแผนกและงานที่มอบหมาย · {filtered.length} รายการ
+        </p>
       </div>
 
       <Card>

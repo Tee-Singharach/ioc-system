@@ -7,7 +7,10 @@ export function getInboxPendingTickets(
   officer: Pick<User, "departmentId">,
 ): Ticket[] {
   return tickets.filter(
-    (t) => t.status === "รอรับเรื่อง" && t.departmentId === officer.departmentId,
+    (t) =>
+      t.status === "รอรับเรื่อง" &&
+      !t.receivedById &&
+      t.departmentId === officer.departmentId,
   );
 }
 
@@ -15,12 +18,13 @@ export function getOfficerMyTasks(
   tickets: Ticket[],
   officer: Pick<User, "id">,
 ): Ticket[] {
-  return tickets.filter(
-    (t) =>
-      !TERMINAL_STATUSES.includes(t.status) &&
-      t.status !== "รอรับเรื่อง" &&
-      (t.assigneeId === officer.id || t.receivedById === officer.id),
-  );
+  return tickets.filter((t) => {
+    if (TERMINAL_STATUSES.includes(t.status)) return false;
+    const mine = t.assigneeId === officer.id || t.receivedById === officer.id;
+    if (!mine) return false;
+    if (t.status === "รอรับเรื่อง" && !t.receivedById) return false;
+    return true;
+  });
 }
 
 export function getOfficerTickets(tickets: Ticket[], officer: Pick<User, "id" | "departmentId">): Ticket[] {
@@ -34,6 +38,18 @@ export function getOfficerTickets(tickets: Ticket[], officer: Pick<User, "id" | 
 
 export function canOfficerViewTicket(ticket: Ticket, officer: Pick<User, "id" | "departmentId">): boolean {
   return getOfficerTickets([ticket], officer).length > 0;
+}
+
+/** ดำเนินการ workflow ได้จากกล่องงาน — งานรอรับในแผนก หรืองานที่รับ/ได้รับมอบหมายแล้ว */
+export function canOfficerActOnTicket(ticket: Ticket, officer: Pick<User, "id" | "departmentId">): boolean {
+  if (
+    ticket.status === "รอรับเรื่อง" &&
+    !ticket.receivedById &&
+    ticket.departmentId === officer.departmentId
+  ) {
+    return true;
+  }
+  return ticket.receivedById === officer.id || ticket.assigneeId === officer.id;
 }
 
 export function homePathForRole(role: User["role"]): string {

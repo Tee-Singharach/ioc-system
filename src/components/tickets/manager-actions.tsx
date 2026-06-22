@@ -64,7 +64,7 @@ export function ManagerActions({ ticket, onApprove, onReject }: ManagerActionsPr
         <div className="mt-4 space-y-2">
           <Button type="button" className="w-full" onClick={() => setApproveOpen(true)}>
             <CheckCircle className="h-4 w-4" aria-hidden />
-            อนุมัติคำร้อง
+            อนุมัติให้ดำเนินการ
           </Button>
           <Button
             type="button"
@@ -116,8 +116,8 @@ export function ManagerActions({ ticket, onApprove, onReject }: ManagerActionsPr
 
       <ConfirmModal
         open={approveOpen}
-        title="อนุมัติคำร้อง"
-        description="ยืนยันอนุมัติคำร้องนี้หรือไม่? สถานะจะเปลี่ยนเป็นเสร็จสมบูรณ์"
+        title="อนุมัติให้ดำเนินการ"
+        description="ยืนยันอนุมัติให้เจ้าหน้าที่ดำเนินการต่อหรือไม่? สถานะจะเปลี่ยนเป็นกำลังดำเนินการ"
         confirmLabel="อนุมัติ"
         onConfirm={() => {
           onApprove();

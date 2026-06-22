@@ -11,6 +11,11 @@ import { useMockTickets } from "@/providers/mock-ticket-provider";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { TicketStepper } from "@/components/tickets/ticket-stepper";
+import { EvaluationCard } from "@/components/tickets/ticket-evaluation";
+import { RequestDetailsCard } from "@/components/tickets/request-details-card";
+import { resolveCategoryId } from "@/lib/ticket-categories";
+import { StaffWorkflowHint } from "@/components/tickets/staff-workflow-hint";
+import { ProgressNotes } from "@/components/tickets/progress-notes";
 import { TicketComments } from "@/components/tickets/ticket-comments";
 import { TicketForm } from "@/components/tickets/ticket-form";
 import { Button } from "@/components/ui/button";
@@ -157,21 +162,29 @@ export default function StaffTicketDetailPage({ params }: { params: Promise<{ id
         <>
           <Card>
             <CardBody className="space-y-6 p-5 sm:p-6">
-              <TicketStepper status={ticket.status} history={ticket.statusHistory} />
-
-              <div className="border-t border-zinc-100 pt-6">
-                <h2 className="text-sm font-semibold text-zinc-900">รายละเอียด</h2>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-700 whitespace-pre-wrap">
-                  {ticket.description}
-                </p>
-              </div>
+              <TicketStepper ticket={ticket} />
+              <StaffWorkflowHint ticket={ticket} />
+              {ticket.evaluation && (
+                <EvaluationCard
+                  evaluation={ticket.evaluation}
+                  categoryId={resolveCategoryId(ticket)}
+                  ticket={ticket}
+                />
+              )}
+              <RequestDetailsCard ticket={ticket} />
 
               <div className="grid gap-5 border-t border-zinc-100 pt-6 sm:grid-cols-2 lg:grid-cols-3">
                 <PersonField label="ผู้ยื่น" name={ticket.requesterName} tone="blue" />
                 <PersonField label="ผู้รับผิดชอบ" name={responsible} tone="amber" />
                 <PersonField label="ผู้อนุมัติ" name="—" tone="none" />
                 <div>
-                  <p className="text-xs font-medium text-zinc-500">ฝ่าย</p>
+                  <p className="text-xs font-medium text-zinc-500">หมวดคำร้อง</p>
+                  <p className="mt-1.5 text-sm font-medium text-zinc-900">
+                    {ticket.categoryLabel ?? "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500">ฝ่ายรับผิดชอบ</p>
                   <p className="mt-1.5 text-sm font-medium text-zinc-900">{ticket.departmentName}</p>
                 </div>
                 <div>
@@ -208,6 +221,14 @@ export default function StaffTicketDetailPage({ params }: { params: Promise<{ id
             </CardBody>
           </Card>
 
+          {ticket.progressNotes.length > 0 && (
+            <Card>
+              <CardBody className="p-5 sm:p-6">
+                <ProgressNotes notes={ticket.progressNotes} canAdd={false} onAdd={() => {}} />
+              </CardBody>
+            </Card>
+          )}
+
           {user && (
             <Card>
               <CardBody className="p-5 sm:p-6">
@@ -228,38 +249,30 @@ export default function StaffTicketDetailPage({ params }: { params: Promise<{ id
           )}
         </>
       ) : (
-        <Card>
-          <CardBody className="p-5 sm:p-6">
-            <h2 className="text-base font-semibold text-zinc-900">
-              {mode === "resubmit" ? "ส่งคำร้องใหม่" : "แก้ไขคำร้อง"}
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              {mode === "resubmit"
-                ? "ปรับข้อมูลแล้วส่งเข้าระบบอีกครั้ง"
-                : "แก้ไขได้เฉพาะก่อนมีเจ้าหน้าที่รับเรื่อง"}
-            </p>
-            <div className="mt-5">
-              <TicketForm
-                initialData={{
-                  title: ticket.title,
-                  description: ticket.description,
-                  priority: ticket.priority,
-                  departmentId: ticket.departmentId,
-                  scheduledStartAt: ticket.scheduledStartAt,
-                  scheduledEndAt: ticket.scheduledEndAt,
-                  attachmentNames: ticket.attachments.map((a) => a.name),
-                }}
-                submitLabel={mode === "resubmit" ? "ส่งคำร้องใหม่" : "บันทึกการแก้ไข"}
-                onSubmit={(data) => {
-                  if (mode === "resubmit") resubmitTicket(ticket.id, data);
-                  else updateTicket(ticket.id, data);
-                  setMode("view");
-                }}
-                onCancel={() => setMode("view")}
-              />
-            </div>
-          </CardBody>
-        </Card>
+        <TicketForm
+          header={{
+            title: mode === "resubmit" ? "ส่งคำร้องใหม่" : "แก้ไขคำร้อง",
+            description: "แก้ไขได้ก่อนมีผู้รับเรื่อง",
+          }}
+          initialData={{
+            title: ticket.title,
+            description: ticket.description,
+            priority: ticket.priority,
+            departmentId: ticket.departmentId,
+            categoryId: resolveCategoryId(ticket),
+            requestDetails: ticket.requestDetails,
+            scheduledStartAt: ticket.scheduledStartAt,
+            scheduledEndAt: ticket.scheduledEndAt,
+            attachmentNames: ticket.attachments.map((a) => a.name),
+          }}
+          submitLabel={mode === "resubmit" ? "ส่งคำร้องใหม่" : "บันทึกการแก้ไข"}
+          onSubmit={(data) => {
+            if (mode === "resubmit") resubmitTicket(ticket.id, data);
+            else updateTicket(ticket.id, data);
+            setMode("view");
+          }}
+          onCancel={() => setMode("view")}
+        />
       )}
 
       <ConfirmModal

@@ -1,7 +1,7 @@
 import type { Ticket } from "@/lib/types/ticket";
 
 export function canEdit(ticket: Ticket): boolean {
-  return ticket.status === "รอรับเรื่อง";
+  return ticket.status === "รอรับเรื่อง" && !ticket.receivedById;
 }
 
 export function canCancel(ticket: Ticket): boolean {

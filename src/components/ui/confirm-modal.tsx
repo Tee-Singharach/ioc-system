@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ModalPortal } from "@/components/ui/modal-portal";
 
@@ -11,6 +11,7 @@ interface ConfirmModalProps {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "default" | "danger";
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -22,6 +23,7 @@ export function ConfirmModal({
   confirmLabel = "ยืนยัน",
   cancelLabel = "ยกเลิก",
   variant = "default",
+  children,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -63,6 +65,7 @@ export function ConfirmModal({
             {description}
           </p>
         )}
+        {children && <div className="mt-4">{children}</div>}
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onCancel}>
             {cancelLabel}

@@ -1,68 +1,62 @@
 import type { StatusHistoryEntry, TicketStatus } from "@/lib/types/ticket";
-
-const STEPS = [
-  { status: "รอรับเรื่อง" as TicketStatus, label: "คำร้องใหม่" },
-  { status: "กำลังดำเนินการ" as TicketStatus, label: "กำลังดำเนินการ" },
-  { status: "รออนุมัติ" as TicketStatus, label: "รออนุมัติ" },
-  { status: "เสร็จสมบูรณ์" as TicketStatus, label: "เสร็จสิ้น" },
-];
+import type { Ticket } from "@/lib/types/ticket";
+import { TICKET_WORKFLOW_STEPS, workflowStepIndex } from "@/lib/ticket-workflow";
 
 const TERMINAL: TicketStatus[] = ["ปฏิเสธ", "ยกเลิก"];
-
-function stepIndex(status: TicketStatus, history: StatusHistoryEntry[]) {
-  if (status === "เสร็จสมบูรณ์") return STEPS.length - 1;
-  const idx = STEPS.findIndex((s) => s.status === status);
-  if (idx >= 0) return idx;
-  if (TERMINAL.includes(status)) {
-    let max = 0;
-    for (const h of history) {
-      const i = STEPS.findIndex((s) => s.status === h.status);
-      if (i > max) max = i;
-    }
-    return max;
-  }
-  return 0;
-}
+const STEPS = TICKET_WORKFLOW_STEPS.length;
+const DOT = 32;
+const DOT_CENTER = DOT / 2;
+/** จุดกลางวงแรก/สุดท้ายบน grid เท่าๆ กัน (1/10 กับ 9/10) */
+const TRACK_INSET = `${50 / STEPS}%`;
 
 export function TicketStepper({
-  status,
-  history,
+  ticket,
 }: {
-  status: TicketStatus;
-  history: StatusHistoryEntry[];
+  ticket: Pick<Ticket, "status" | "receivedById" | "statusHistory">;
 }) {
-  const current = stepIndex(status, history);
-  const allDone = status === "เสร็จสมบูรณ์";
-  const isTerminal = TERMINAL.includes(status);
-  const progressPct = allDone ? 100 : (current / (STEPS.length - 1)) * 100;
+  const current = workflowStepIndex(ticket);
+  const allDone = ticket.status === "เสร็จสมบูรณ์";
+  const isTerminal = TERMINAL.includes(ticket.status);
+  const last = STEPS - 1;
+  const progressPct = allDone ? 100 : (current / last) * 100;
+  const trackWidth = `calc(100% - ${100 / STEPS}%)`;
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full pt-0.5">
       <div
-        className="absolute top-4 right-4 left-4 h-0.5 bg-zinc-200"
+        className="pointer-events-none absolute h-[3px] rounded-full bg-zinc-200"
+        style={{ top: DOT_CENTER - 1.5, left: TRACK_INSET, width: trackWidth }}
         aria-hidden
       />
       {!isTerminal && (
         <div
-          className="absolute top-4 left-4 h-0.5 bg-emerald-500 transition-[width]"
-          style={{ width: `calc((100% - 2rem) * ${progressPct / 100})` }}
+          className="pointer-events-none absolute h-[3px] rounded-full bg-emerald-500 transition-[width] duration-300 ease-out"
+          style={{
+            top: DOT_CENTER - 1.5,
+            left: TRACK_INSET,
+            width: `calc(${trackWidth} * ${progressPct / 100})`,
+          }}
           aria-hidden
         />
       )}
 
-      <ol className="relative flex w-full justify-between" aria-label="ขั้นตอนสถานะคำร้อง">
-        {STEPS.map((step, index) => {
+      <ol
+        className="relative grid w-full gap-0"
+        style={{ gridTemplateColumns: `repeat(${STEPS}, minmax(0, 1fr))` }}
+        aria-label="ขั้นตอนสถานะคำร้อง"
+      >
+        {TICKET_WORKFLOW_STEPS.map((step, index) => {
           const done = allDone || (!isTerminal && index < current);
           const active = !isTerminal && !allDone && index === current;
 
           return (
-            <li key={step.status} className="flex flex-col items-center">
+            <li key={step.id} className="relative z-10 flex min-w-0 flex-col items-center">
               <div
-                className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                   done
-                    ? "bg-emerald-500 text-white"
+                    ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25"
                     : active
-                      ? "bg-blue-600 text-white ring-4 ring-blue-100"
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25 ring-4 ring-blue-100"
                       : "border-2 border-zinc-200 bg-white text-zinc-400"
                 }`}
                 aria-current={active ? "step" : undefined}
@@ -83,7 +77,7 @@ export function TicketStepper({
                 )}
               </div>
               <p
-                className={`mt-2 max-w-[4.5rem] text-center text-xs leading-snug font-medium sm:max-w-none sm:text-sm ${
+                className={`mt-2 w-full px-0.5 text-center text-[10px] leading-snug font-medium sm:text-xs ${
                   done || active ? "text-zinc-900" : "text-zinc-400"
                 }`}
               >
@@ -96,3 +90,6 @@ export function TicketStepper({
     </div>
   );
 }
+
+/** @deprecated use ticket prop — kept for type export compatibility */
+export type { StatusHistoryEntry };

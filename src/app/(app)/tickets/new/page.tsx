@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { TicketForm } from "@/components/tickets/ticket-form";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
-import { Card, CardBody } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 
 export default function NewTicketPage() {
@@ -11,22 +10,18 @@ export default function NewTicketPage() {
   const { createTicket } = useMockTickets();
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-8">
       <PageHeader
         title="สร้างคำร้องใหม่"
-        description="กรอกข้อมูลและแนบไฟล์ประกอบคำร้องของคุณ"
+        description="เลือกแผนกและหมวด แล้วกรอกข้อมูลให้ครบ"
       />
-      <Card>
-        <CardBody>
-          <TicketForm
-            onSubmit={(data) => {
-              const ticket = createTicket(data);
-              router.push(`/tickets/${ticket.id}`);
-            }}
-            onCancel={() => router.push("/tickets")}
-          />
-        </CardBody>
-      </Card>
+      <TicketForm
+        onSubmit={(data) => {
+          const ticket = createTicket(data);
+          router.push(`/tickets/${ticket.id}`);
+        }}
+        onCancel={() => router.push("/tickets")}
+      />
     </div>
   );
 }

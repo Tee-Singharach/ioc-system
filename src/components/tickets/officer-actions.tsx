@@ -1,50 +1,65 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertTriangle, Play, Users } from "lucide-react";
-import type { Ticket, TicketStatus } from "@/lib/types/ticket";
-import { OFFICER_UPDATABLE_STATUSES } from "@/lib/types/ticket";
+import { useState } from "react";
+import { AlertTriangle, CheckCircle, ClipboardCheck, Play, Send } from "lucide-react";
+import type { Ticket, TicketEvaluation } from "@/lib/types/ticket";
 import { MOCK_DEPARTMENTS, MOCK_OFFICERS } from "@/lib/mock/data";
-import { canAssign, canReceive, canUpdateStatus } from "@/lib/officer-rules";
+import { hasCompleteEvaluation } from "@/lib/ticket-evaluation";
+import {
+  canAssign,
+  canComplete,
+  canReceive,
+  canSaveEvaluation,
+} from "@/lib/officer-rules";
+import { TICKET_WORKFLOW_STEPS, workflowStepIndex } from "@/lib/ticket-workflow";
+import { EvaluationModal } from "@/components/tickets/ticket-evaluation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 interface OfficerActionsProps {
   ticket: Ticket;
   currentOfficerId: string;
   onReceive: () => void;
-  onUpdateStatus: (status: TicketStatus) => void;
+  onSaveEvaluation: (
+    data: Omit<TicketEvaluation, "evaluatedAt" | "evaluatedById" | "evaluatedByName">,
+  ) => void;
+  onSubmitForApproval: () => void;
+  onComplete: (summary: string) => void;
   onAssign: (officerId: string) => void;
 }
 
-function ActionTile({
-  label,
-  icon: Icon,
-  disabled,
-  active,
-  onClick,
+function AssignPanel({
+  assignOfficerId,
+  setAssignOfficerId,
+  officersWithDept,
+  onConfirm,
 }: {
-  label: string;
-  icon: typeof Play;
-  disabled?: boolean;
-  active?: boolean;
-  onClick: () => void;
+  assignOfficerId: string;
+  setAssignOfficerId: (id: string) => void;
+  officersWithDept: { id: string; name: string; departmentName: string }[];
+  onConfirm: () => void;
 }) {
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-        active
-          ? "border-blue-300 bg-white shadow-sm"
-          : "border-zinc-200/80 bg-white/80 hover:border-blue-200 hover:bg-white"
-      }`}
-    >
-      <Icon className="h-4 w-4 text-zinc-500" aria-hidden />
-      <span className="text-[11px] font-medium leading-tight text-zinc-700">{label}</span>
-    </button>
+    <div className="space-y-2 rounded-xl border border-zinc-200/80 bg-white p-3">
+      <Select
+        label="เลือกเจ้าหน้าที่"
+        value={assignOfficerId}
+        onChange={(e) => setAssignOfficerId(e.target.value)}
+        options={[
+          { value: "", label: "— เลือกเจ้าหน้าที่ —" },
+          ...officersWithDept.map((o) => ({
+            value: o.id,
+            label: `${o.name} (${o.departmentName})`,
+          })),
+        ]}
+      />
+      <Button type="button" className="w-full" disabled={!assignOfficerId} onClick={onConfirm}>
+        มอบหมายงาน
+      </Button>
+    </div>
   );
 }
 
@@ -52,87 +67,172 @@ export function OfficerActions({
   ticket,
   currentOfficerId,
   onReceive,
-  onUpdateStatus,
+  onSaveEvaluation,
+  onSubmitForApproval,
+  onComplete,
   onAssign,
 }: OfficerActionsProps) {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignOfficerId, setAssignOfficerId] = useState("");
-  const [newStatus, setNewStatus] = useState<TicketStatus>(ticket.status);
-
-  useEffect(() => {
-    setNewStatus(ticket.status);
-  }, [ticket.status]);
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [evalOpen, setEvalOpen] = useState(false);
+  const [completeSummary, setCompleteSummary] = useState("");
+  const [completeError, setCompleteError] = useState("");
 
   const officersWithDept = MOCK_OFFICERS.map((o) => {
     const dept = MOCK_DEPARTMENTS.find((d) => d.id === o.departmentId);
     return { ...o, departmentName: dept?.name ?? "" };
   });
 
+  const step = workflowStepIndex(ticket);
+  const stepMeta = TICKET_WORKFLOW_STEPS[step];
+  const evaluating = canSaveEvaluation(ticket);
+  const evaluationReady = hasCompleteEvaluation(ticket);
+  const hasEvalRecord = Boolean(ticket.evaluation);
+  const showAssign = canAssign(ticket);
+
+  function confirmAssign() {
+    onAssign(assignOfficerId);
+    setAssignOfficerId("");
+    setAssignOpen(false);
+  }
+
   return (
-    <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-zinc-900">การดำเนินการ</h2>
-        <Badge color="blue">เจ้าหน้าที่</Badge>
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-zinc-900">การดำเนินการ</h2>
+          <Badge color="blue">เจ้าหน้าที่</Badge>
+        </div>
+
+        <p className="mt-3 text-xs font-medium text-zinc-500">
+          ขั้นที่ {step + 1} · {stepMeta?.label ?? "—"}
+        </p>
+
+        <div className="mt-3 space-y-3">
+          {step === 0 && canReceive(ticket) && (
+            <Button type="button" className="w-full gap-2" onClick={onReceive}>
+              <Play className="h-4 w-4" aria-hidden />
+              รับเรื่อง
+            </Button>
+          )}
+
+          {step === 1 && evaluating && (
+            <div className="space-y-2">
+              {evaluationReady && (
+                <Button type="button" className="w-full gap-2" onClick={onSubmitForApproval}>
+                  <Send className="h-4 w-4" aria-hidden />
+                  ส่งอนุมัติ
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant={evaluationReady ? "secondary" : "primary"}
+                className="w-full gap-2"
+                onClick={() => setEvalOpen(true)}
+              >
+                <ClipboardCheck className="h-4 w-4" aria-hidden />
+                {hasEvalRecord ? "แก้ไขผลประเมิน" : "กรอกผลประเมิน"}
+              </Button>
+              {!evaluationReady && (
+                <p className="text-center text-[11px] leading-relaxed text-zinc-500">
+                  {hasEvalRecord
+                    ? "กรอกฟิลด์ที่จำเป็นให้ครบ แล้วบันทึกอีกครั้ง"
+                    : "เปิดฟอร์ม → กรอก → บันทึก แล้วจึงส่งอนุมัติ"}
+                </p>
+              )}
+            </div>
+          )}
+
+          {step === 2 && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-center text-xs leading-relaxed text-amber-800">
+              รอผู้จัดการอนุมัติ — ยังไม่เริ่มดำเนินการจริง
+            </p>
+          )}
+
+          {step === 3 && canComplete(ticket) && (
+            <Button type="button" className="w-full gap-2" onClick={() => setCompleteOpen(true)}>
+              <CheckCircle className="h-4 w-4" aria-hidden />
+              ส่งมอบ / ปิดงาน
+            </Button>
+          )}
+
+          {step === 4 && (
+            <p className="text-center text-xs text-zinc-500">ดำเนินการเสร็จสิ้นแล้ว</p>
+          )}
+
+          {showAssign && (
+            <div className="border-t border-blue-100/80 pt-3">
+              <button
+                type="button"
+                onClick={() => setAssignOpen((open) => !open)}
+                className="w-full text-center text-xs font-medium text-zinc-600 transition-colors hover:text-blue-700"
+              >
+                {assignOpen ? "ยกเลิกมอบหมาย" : "มอบหมายให้เจ้าหน้าที่อื่น"}
+              </button>
+              {assignOpen && (
+                <div className="mt-2">
+                  <AssignPanel
+                    assignOfficerId={assignOfficerId}
+                    setAssignOfficerId={setAssignOfficerId}
+                    officersWithDept={officersWithDept}
+                    onConfirm={confirmAssign}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {ticket.assigneeId === currentOfficerId && step === 3 && (
+            <p className="text-center text-xs text-zinc-500">คุณเป็นผู้รับผิดชอบงานนี้</p>
+          )}
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <ActionTile label="รับงาน" icon={Play} disabled={!canReceive(ticket)} onClick={onReceive} />
-        <ActionTile
-          label="มอบหมาย"
-          icon={Users}
-          disabled={!canAssign(ticket)}
-          active={assignOpen}
-          onClick={() => setAssignOpen((open) => !open)}
+      {evaluating && (
+        <EvaluationModal
+          open={evalOpen}
+          onClose={() => setEvalOpen(false)}
+          ticket={ticket}
+          initial={ticket.evaluation}
+          onSave={onSaveEvaluation}
         />
-      </div>
-
-      {assignOpen && canAssign(ticket) && (
-        <div className="mt-3 space-y-2 rounded-xl border border-zinc-200/80 bg-white p-3">
-          <Select
-            label="เลือกเจ้าหน้าที่"
-            value={assignOfficerId}
-            onChange={(e) => setAssignOfficerId(e.target.value)}
-            options={[
-              { value: "", label: "— เลือกเจ้าหน้าที่ —" },
-              ...officersWithDept.map((o) => ({
-                value: o.id,
-                label: `${o.name} (${o.departmentName})`,
-              })),
-            ]}
-          />
-          <Button
-            type="button"
-            className="w-full"
-            disabled={!assignOfficerId}
-            onClick={() => {
-              onAssign(assignOfficerId);
-              setAssignOfficerId("");
-              setAssignOpen(false);
-            }}
-          >
-            มอบหมายงาน
-          </Button>
-        </div>
       )}
 
-      {canUpdateStatus(ticket) && (
-        <div className="mt-4 rounded-xl border border-dashed border-zinc-300 bg-white/70 p-3">
-          <Select
-            label="เปลี่ยนสถานะ"
-            value={newStatus}
-            onChange={(e) => {
-              const status = e.target.value as TicketStatus;
-              setNewStatus(status);
-              onUpdateStatus(status);
-            }}
-            options={OFFICER_UPDATABLE_STATUSES.map((s) => ({ value: s, label: s }))}
-          />
-        </div>
-      )}
-
-      {ticket.assigneeId === currentOfficerId && ticket.status === "กำลังดำเนินการ" && (
-        <p className="mt-3 text-center text-xs text-zinc-500">คุณเป็นผู้รับผิดชอบงานนี้</p>
-      )}
+      <ConfirmModal
+        open={completeOpen}
+        title="ส่งมอบ / ปิดงาน"
+        description="ยืนยันว่าดำเนินการเสร็จและส่งมอบแล้ว"
+        confirmLabel="ปิดงาน"
+        onConfirm={() => {
+          const trimmed = completeSummary.trim();
+          if (!trimmed) {
+            setCompleteError("กรุณาระบุสรุปการส่งมอบ");
+            return;
+          }
+          onComplete(trimmed);
+          setCompleteSummary("");
+          setCompleteError("");
+          setCompleteOpen(false);
+        }}
+        onCancel={() => {
+          setCompleteOpen(false);
+          setCompleteSummary("");
+          setCompleteError("");
+        }}
+      >
+        <Textarea
+          label="สรุปการส่งมอบ"
+          value={completeSummary}
+          onChange={(e) => {
+            setCompleteSummary(e.target.value);
+            if (completeError) setCompleteError("");
+          }}
+          placeholder="เช่น เปลี่ยนแรมเรียบร้อย ส่งคืนเครื่องที่โต๊ะแล้ว"
+          rows={3}
+          error={completeError}
+        />
+      </ConfirmModal>
     </div>
   );
 }

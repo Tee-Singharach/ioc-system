@@ -29,7 +29,7 @@ function InboxEmpty({ tab }: { tab: InboxTab }) {
       ) : (
         <>
           <p className="mt-5 text-sm font-medium text-zinc-700">ยังไม่มีงานของคุณ</p>
-          <p className="mt-1 text-sm text-zinc-500">รับงานจากแท็บงานรอรับเพื่อเริ่มดำเนินการ</p>
+          <p className="mt-1 text-sm text-zinc-500">รับเรื่องจากแท็บงานรอรับ แล้วส่งอนุมัติก่อนดำเนินการ</p>
         </>
       )}
     </div>
@@ -48,7 +48,7 @@ function PendingRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/officer/tickets/${ticket.id}`}
+            href={`/officer/inbox/${ticket.id}`}
             className="font-mono text-sm font-semibold text-blue-600 hover:underline"
           >
             {ticket.ticketNo}
@@ -62,7 +62,7 @@ function PendingRow({
         </p>
       </div>
       <Button type="button" className="shrink-0" onClick={() => onReceive(ticket.id)}>
-        รับงาน
+        รับเรื่อง
       </Button>
     </li>
   );
@@ -71,7 +71,7 @@ function PendingRow({
 function MyTaskRow({ ticket }: { ticket: Ticket }) {
   return (
     <li className="border-b border-zinc-100 px-5 py-4 last:border-b-0">
-      <Link href={`/officer/tickets/${ticket.id}`} className="block min-w-0 hover:opacity-90">
+      <Link href={`/officer/inbox/${ticket.id}`} className="block min-w-0 hover:opacity-90">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-sm font-semibold text-blue-600">{ticket.ticketNo}</span>
           <StatusBadge status={ticket.status} />

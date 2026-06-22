@@ -3,37 +3,24 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import type { Priority, Ticket } from "@/lib/types/ticket";
+import type { Priority } from "@/lib/types/ticket";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useTickets } from "@/providers/mock-ticket-provider";
+import type { WorkflowFilterTab } from "@/lib/ticket-workflow";
+import { countByWorkflowFilterTab, matchesWorkflowFilterTab } from "@/lib/ticket-workflow";
 import { TicketFilterBar } from "@/components/tickets/ticket-filters";
-import type { StatusTab } from "@/components/tickets/ticket-status-tabs";
 import { TicketTable } from "@/components/tickets/ticket-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 
 const PAGE_SIZE = 8;
 
-function countByTab(tickets: Ticket[]): Record<StatusTab, number> {
-  const counts: Record<StatusTab, number> = {
-    all: tickets.length,
-    "รอรับเรื่อง": 0,
-    "รออนุมัติ": 0,
-    "กำลังดำเนินการ": 0,
-    "เสร็จสมบูรณ์": 0,
-    "ปฏิเสธ": 0,
-    "ยกเลิก": 0,
-  };
-  for (const t of tickets) counts[t.status]++;
-  return counts;
-}
-
 export default function StaffTicketsPage() {
   const { user } = useMockAuth();
   const tickets = useTickets();
 
   const [search, setSearch] = useState("");
-  const [statusTab, setStatusTab] = useState<StatusTab>("all");
+  const [statusTab, setStatusTab] = useState<WorkflowFilterTab>("all");
   const [departmentId, setDepartmentId] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
   const [page, setPage] = useState(1);
@@ -43,7 +30,7 @@ export default function StaffTicketsPage() {
     [user, tickets],
   );
 
-  const tabCounts = useMemo(() => countByTab(myTickets), [myTickets]);
+  const tabCounts = useMemo(() => countByWorkflowFilterTab(myTickets), [myTickets]);
 
   const filtered = useMemo(() => {
     return myTickets.filter((t) => {
@@ -53,7 +40,7 @@ export default function StaffTicketsPage() {
         t.title.toLowerCase().includes(q) ||
         t.ticketNo.toLowerCase().includes(q) ||
         t.requesterName.toLowerCase().includes(q);
-      const matchTab = statusTab === "all" || t.status === statusTab;
+      const matchTab = matchesWorkflowFilterTab(t, statusTab);
       const matchDept = !departmentId || t.departmentId === departmentId;
       const matchPriority = !priority || t.priority === priority;
       return matchSearch && matchTab && matchDept && matchPriority;
