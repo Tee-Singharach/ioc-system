@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 import { File, FileText, Image, Upload, X } from "lucide-react";
 import type { Priority, TicketFormData } from "@/lib/types/ticket";
 import { PRIORITIES } from "@/lib/types/ticket";
@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { FORM_FIELD_CLASS, FormSection } from "@/components/ui/form-section";
 
 const MAX_FILE_SIZE_MB = 200;
 
@@ -31,37 +32,6 @@ function attachmentIcon(name: string) {
   if (["pdf", "doc", "docx", "txt"].includes(ext ?? "")) return FileText;
   return File;
 }
-
-function FormSection({
-  title,
-  hint,
-  children,
-  isFirst = false,
-}: {
-  title?: string;
-  hint?: string;
-  children: ReactNode;
-  isFirst?: boolean;
-}) {
-  const hasHeader = title || hint;
-  return (
-    <section className={isFirst ? "" : "border-t border-zinc-100"}>
-      <div className={`px-5 py-3 sm:px-6 ${isFirst ? "pt-3.5" : ""}`}>
-        {hasHeader && (
-          <div className="mb-1.5">
-            {title && <h2 className="text-sm font-semibold text-zinc-800">{title}</h2>}
-            {hint && (
-              <p className={`text-xs leading-snug text-zinc-500 ${title ? "mt-0.5" : ""}`}>{hint}</p>
-            )}
-          </div>
-        )}
-        <div className="space-y-2">{children}</div>
-      </div>
-    </section>
-  );
-}
-
-const fieldClass = "py-2 text-sm";
 
 interface TicketFormProps {
   header?: { title: string; description?: string };
@@ -173,7 +143,7 @@ export function TicketForm({
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
               options={MOCK_DEPARTMENTS.map((d) => ({ value: d.id, label: d.name }))}
-              className={fieldClass}
+              className={FORM_FIELD_CLASS}
             />
           </FormSection>
 
@@ -188,7 +158,7 @@ export function TicketForm({
               onChange={(e) => setTitle(e.target.value)}
               error={errors.title}
               placeholder="ระบุหัวข้อคำร้อง"
-              className={fieldClass}
+              className={FORM_FIELD_CLASS}
             />
             <Textarea
               label="รายละเอียด"
@@ -198,7 +168,7 @@ export function TicketForm({
               onChange={(e) => setDescription(e.target.value)}
               error={errors.description}
               placeholder="อธิบายรายละเอียด เช่น อุปกรณ์ สถานที่ วันที่ต้องการ ฯลฯ"
-              className={`min-h-20 ${fieldClass}`}
+              className={`min-h-20 ${FORM_FIELD_CLASS}`}
             />
           </FormSection>
 
@@ -212,7 +182,7 @@ export function TicketForm({
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as Priority)}
                 options={PRIORITIES.map((p) => ({ value: p, label: p }))}
-                className={fieldClass}
+                className={FORM_FIELD_CLASS}
               />
               <div className="grid gap-2 sm:grid-cols-2 lg:col-span-2">
                 <Input
@@ -221,7 +191,7 @@ export function TicketForm({
                   value={scheduledStart}
                   onChange={(e) => setScheduledStart(e.target.value)}
                   error={errors.scheduledStart}
-                  className={fieldClass}
+                  className={FORM_FIELD_CLASS}
                 />
                 <Input
                   type="datetime-local"
@@ -229,7 +199,7 @@ export function TicketForm({
                   value={scheduledEnd}
                   onChange={(e) => setScheduledEnd(e.target.value)}
                   error={errors.scheduledEnd}
-                  className={fieldClass}
+                  className={FORM_FIELD_CLASS}
                 />
               </div>
             </div>

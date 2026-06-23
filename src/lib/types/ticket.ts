@@ -35,7 +35,8 @@ export interface RequestItemGroup {
 
 export interface TicketEvaluation {
   diagnosis: string;
-  recommendedAction: RecommendedAction;
+  /** @deprecated ข้อมูลเก่า — ไม่ใช้ในฟอร์มใหม่ */
+  recommendedAction?: RecommendedAction;
   estimatedCost?: number;
   notes?: string;
   details?: Record<string, string | number | RequestItemGroup>;

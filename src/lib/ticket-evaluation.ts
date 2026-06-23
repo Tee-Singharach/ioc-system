@@ -1,37 +1,52 @@
-import type { RecommendedAction, Ticket, TicketEvaluation } from "@/lib/types/ticket";
+import type { Ticket, TicketEvaluation } from "@/lib/types/ticket";
 
-export const RECOMMENDED_ACTIONS: { value: RecommendedAction; label: string }[] = [
+export const RECOMMENDED_ACTIONS = [
   { value: "repair_onsite", label: "ซ่อมได้หน้างาน" },
   { value: "replace_part", label: "เปลี่ยนอะไหล่" },
   { value: "external_repair", label: "ส่งซ่อมภายนอก" },
   { value: "replace_device", label: "เปลี่ยนอุปกรณ์ใหม่" },
   { value: "proceed", label: "ดำเนินการตามคำร้อง" },
   { value: "other", label: "อื่นๆ" },
-];
+] as const;
 
-export function recommendedActionLabel(action: RecommendedAction): string {
+/** @deprecated ใช้กับ config หมวดเก่าเท่านั้น */
+export function recommendedActionLabel(
+  action: import("@/lib/types/ticket").RecommendedAction,
+): string {
   return RECOMMENDED_ACTIONS.find((a) => a.value === action)?.label ?? action;
 }
 
-/** ฟอร์มประเมินมาตรฐานเดียวทุกคำร้อง */
 export function validateEvaluationPayload(
   _ticket: Pick<Ticket, "departmentId">,
   payload: {
     diagnosis?: string;
-    recommendedAction?: RecommendedAction | "";
+    hasCost?: boolean;
     estimatedCost?: number;
   },
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   if (!payload.diagnosis?.trim()) errors.diagnosis = "กรุณาระบุผลการตรวจสอบ";
-  if (!payload.recommendedAction) errors.recommendedAction = "กรุณาเลือกแนวทาง";
+  if (payload.hasCost && payload.estimatedCost == null) {
+    errors.estimatedCost = "กรุณาระบุประมาณค่าใช้จ่าย";
+  }
   return errors;
 }
 
 export function hasCompleteEvaluation(ticket: Pick<Ticket, "evaluation">): boolean {
   const e = ticket.evaluation;
   if (!e) return false;
-  return Object.keys(validateEvaluationPayload({ departmentId: "" }, e)).length === 0;
+  return (
+    Object.keys(
+      validateEvaluationPayload(
+        { departmentId: "" },
+        {
+          diagnosis: e.diagnosis,
+          hasCost: e.estimatedCost != null,
+          estimatedCost: e.estimatedCost,
+        },
+      ),
+    ).length === 0
+  );
 }
 
 export function canEditEvaluation(ticket: Ticket): boolean {
@@ -44,7 +59,7 @@ export function formatEstimatedCost(cost?: number): string | null {
 }
 
 export function evaluationSummary(e: TicketEvaluation): string {
-  const parts = [e.diagnosis, `แนะนำ: ${recommendedActionLabel(e.recommendedAction)}`];
+  const parts = [e.diagnosis];
   const cost = formatEstimatedCost(e.estimatedCost);
   if (cost) parts.push(`ประมาณ ${cost}`);
   if (e.notes?.trim()) parts.push(e.notes.trim());

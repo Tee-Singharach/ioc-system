@@ -1,5 +1,5 @@
 import type { AuditLogEntry, ManagedDepartment, ManagedUser } from "@/lib/types/admin";
-import type { Department, RecommendedAction, Ticket, TicketEvaluation, User } from "@/lib/types/ticket";
+import type { Department, Ticket, TicketEvaluation, User } from "@/lib/types/ticket";
 
 const OFFICER_EVAL = {
   evaluatedAt: "2026-06-13T10:45:00.000Z",
@@ -212,7 +212,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-it",
     evaluation: mockStandardEvaluation({
       diagnosis: "ตรวจพบติดกระดาษใน fuser และหัวพิมพ์สึก ต้องส่งศูนย์ซ่อม",
-      recommendedAction: "external_repair",
       estimatedCost: 2500,
     }),
     attachments: [{ id: "att-2", name: "รูปเครื่องปริ้น.jpg", size: 1_200_000 }],
@@ -281,7 +280,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-it",
     evaluation: mockStandardEvaluation({
       diagnosis: "ตรวจสอบแล้วผู้ขอมีความจำเป็นใช้งานโฟลเดอร์ตามบทบาทในฝ่ายการเงิน",
-      recommendedAction: "proceed",
       evaluatedAt: "2026-06-12T14:30:00.000Z",
       evaluatedById: "officer-002",
       evaluatedByName: "สุดา รับเรื่อง",
@@ -349,7 +347,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-it",
     evaluation: mockStandardEvaluation({
       diagnosis: "มีสต็อกกระดาษ A4 เพียงพอในคลัง",
-      recommendedAction: "proceed",
       notes: "เบิกจากคลังชั้น B",
       evaluatedAt: "2026-06-09T09:30:00.000Z",
     }),
@@ -402,7 +399,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-it",
     evaluation: mockStandardEvaluation({
       diagnosis: "ตรวจสอบแล้ว RAM 8GB ไม่เพียงพอ แนะนำอัปเกรดเป็น 16GB",
-      recommendedAction: "replace_part",
       estimatedCost: 1800,
       notes: "สั่ง RAM แล้ว รอของเข้าคลัง",
     }),
@@ -473,7 +469,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-it",
     evaluation: mockStandardEvaluation({
       diagnosis: "ประเมินแล้วมี Figma Free ใช้งานร่วมกันได้ ไม่จำเป็นต้องซื้อ Professional",
-      recommendedAction: "proceed",
       notes: "ส่งต่อผู้จัดการ — งบไม่รองรับ",
       evaluatedAt: "2026-06-13T09:00:00.000Z",
     }),
@@ -537,7 +532,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-it",
     evaluation: mockStandardEvaluation({
       diagnosis: "วางแผน migration ได้ในช่วงนอกเวลางาน ไม่กระทบการใช้งาน",
-      recommendedAction: "proceed",
       evaluatedAt: "2026-06-15T09:30:00.000Z",
       evaluatedById: "officer-002",
       evaluatedByName: "สุดา รับเรื่อง",
@@ -590,7 +584,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-hr",
     evaluation: mockStandardEvaluation({
       diagnosis: "เอกสารและรูปถ่ายครบ ดำเนินการออกบัตรได้",
-      recommendedAction: "proceed",
       evaluatedAt: "2026-06-10T08:30:00.000Z",
       evaluatedById: "officer-003",
       evaluatedByName: "ประเสริฐ ข้ามแผนก",
@@ -691,7 +684,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-finance",
     evaluation: mockStandardEvaluation({
       diagnosis: "ใบเสนอราคาตรงงบโครงการ Q2",
-      recommendedAction: "proceed",
       estimatedCost: 45000,
       notes: "ผู้ขาย: บจก. สื่อโฆษณา ABC",
       evaluatedAt: "2026-06-16T06:30:00.000Z",
@@ -746,7 +738,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-hr",
     evaluation: mockStandardEvaluation({
       diagnosis: "หลักสูตรสอดคล้องแผนพัฒนาบุคลากร งบอบรมยังเหลือ",
-      recommendedAction: "proceed",
       estimatedCost: 12000,
       evaluatedAt: "2026-06-16T07:30:00.000Z",
       evaluatedById: "officer-003",
@@ -815,7 +806,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-it",
     evaluation: mockStandardEvaluation({
       diagnosis: "จัดช่างและอะไหล่ได้ภายใน 1 วัน",
-      recommendedAction: "proceed",
       estimatedCost: 15000,
       notes: "ใช้แรงคน 2 คน",
       evaluatedAt: "2026-06-07T07:30:00.000Z",
@@ -889,7 +879,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-hr",
     evaluation: mockStandardEvaluation({
       diagnosis: "ตรวจสอบตารางงานแล้ว ตำแหน่งไม่รองรับการเปลี่ยนกะชั่วคราว",
-      recommendedAction: "other",
       evaluatedAt: "2026-06-14T01:00:00.000Z",
       evaluatedById: "officer-003",
       evaluatedByName: "ประเสริฐ ข้ามแผนก",
@@ -930,7 +919,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-it",
     evaluation: mockStandardEvaluation({
       diagnosis: "ติดตั้ง client และสแกนเบื้องต้นเรียบร้อย",
-      recommendedAction: "proceed",
       evaluatedAt: "2026-06-09T09:15:00.000Z",
     }),
     attachments: [],
@@ -1028,7 +1016,6 @@ const RAW_TICKETS: Ticket[] = [
     assigneeDepartmentId: "dept-it",
     evaluation: mockStandardEvaluation({
       diagnosis: "RAM 4GB ไม่พอ แนะนำเพิ่มเป็น 16GB",
-      recommendedAction: "replace_part",
       estimatedCost: 1600,
       notes: "แนวทางรวม: เปลี่ยนอะไหล่ทั้งสองเครื่อง",
     }),
@@ -1155,3 +1142,4 @@ export function generateTicketNo(): string {
   ticketCounter += 1;
   return `IOC-2026-${no}`;
 }
+
