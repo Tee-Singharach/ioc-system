@@ -4,7 +4,6 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import type { Attachment, Ticket, TicketEvaluation, TicketFormData, TicketStatus } from "@/lib/types/ticket";
 import { generateId, generateTicketNo, INITIAL_TICKETS, MOCK_DEPARTMENTS, MOCK_OFFICERS } from "@/lib/mock/data";
 import { getOfficerTickets } from "@/lib/officer-access";
-import { getCategoryConfig, parseFieldValues } from "@/lib/ticket-categories";
 import { hasCompleteEvaluation } from "@/lib/ticket-evaluation";
 import { approvalNote, canTransition } from "@/lib/ticket-workflow";
 import { useMockAuth } from "@/providers/mock-auth-provider";
@@ -69,7 +68,6 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
       if (!user) throw new Error("Not authenticated");
       const dept = MOCK_DEPARTMENTS.find((d) => d.id === data.departmentId);
       const reqDept = MOCK_DEPARTMENTS.find((d) => d.id === user.departmentId);
-      const cat = getCategoryConfig(data.categoryId);
       const now = new Date().toISOString();
       const ticket: Ticket = {
         id: generateId("tkt"),
@@ -80,9 +78,6 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
         status: "รอรับเรื่อง",
         departmentId: data.departmentId,
         departmentName: dept?.name ?? "",
-        categoryId: data.categoryId,
-        categoryLabel: cat?.label,
-        requestDetails: parseFieldValues(data.categoryId, "request", data.requestDetails),
         requesterDepartmentId: user.departmentId,
         requesterDepartmentName: reqDept?.name,
         requesterId: user.id,
@@ -108,7 +103,6 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
 
   const updateTicket = useCallback((id: string, data: TicketFormData) => {
     const dept = MOCK_DEPARTMENTS.find((d) => d.id === data.departmentId);
-    const cat = getCategoryConfig(data.categoryId);
     const now = new Date().toISOString();
     setTickets((prev) =>
       prev.map((t) =>
@@ -120,9 +114,6 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
               priority: data.priority,
               departmentId: data.departmentId,
               departmentName: dept?.name ?? t.departmentName,
-              categoryId: data.categoryId,
-              categoryLabel: cat?.label,
-              requestDetails: parseFieldValues(data.categoryId, "request", data.requestDetails),
               attachments: data.attachmentNames.map((name) => ({
                 id: generateId("att"),
                 name,
@@ -145,7 +136,6 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
 
   const resubmitTicket = useCallback((id: string, data: TicketFormData) => {
     const dept = MOCK_DEPARTMENTS.find((d) => d.id === data.departmentId);
-    const cat = getCategoryConfig(data.categoryId);
     const now = new Date().toISOString();
     setTickets((prev) =>
       prev.map((t) =>
@@ -159,9 +149,6 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
                   priority: data.priority,
                   departmentId: data.departmentId,
                   departmentName: dept?.name ?? t.departmentName,
-                  categoryId: data.categoryId,
-                  categoryLabel: cat?.label,
-                  requestDetails: parseFieldValues(data.categoryId, "request", data.requestDetails),
                   attachments: data.attachmentNames.map((name) => ({
                     id: generateId("att"),
                     name,

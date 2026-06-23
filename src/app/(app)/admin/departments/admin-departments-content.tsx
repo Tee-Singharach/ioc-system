@@ -8,7 +8,7 @@ import {
   type DepartmentFieldErrors,
   type DepartmentFormValue,
 } from "@/components/admin/department-form-modal";
-import { deptSlugFromId, deptThemeForId } from "@/lib/admin-ui";
+import { deptSlugFromId } from "@/lib/admin-ui";
 import { useMockAdmin } from "@/providers/mock-admin-provider";
 import { useTickets } from "@/providers/mock-ticket-provider";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ const EMPTY_DEPT: DepartmentFormValue = {
   slug: "",
   name: "",
   shortName: "",
-  colorIndex: 0,
 };
 
 export default function AdminDepartmentsContent() {
@@ -96,7 +95,6 @@ export default function AdminDepartmentsContent() {
       slug: deptSlugFromId(dept.id),
       name: dept.name,
       shortName: dept.shortName ?? "",
-      colorIndex: dept.colorIndex ?? 0,
     });
     setEditErrors({});
     setEditFormError(null);
@@ -113,7 +111,6 @@ export default function AdminDepartmentsContent() {
     const err = updateDepartment(editId, {
       name: editForm.name,
       shortName: editForm.shortName,
-      colorIndex: editForm.colorIndex,
     });
     if (err) {
       setEditFormError(err);
@@ -137,9 +134,8 @@ export default function AdminDepartmentsContent() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={Building2}
-        iconClassName="bg-amber-100 text-amber-600"
         title="จัดการแผนก"
-        description="จัดการข้อมูลและสีประจำแต่ละแผนก"
+        description="จัดการข้อมูลแผนกในระบบ"
         actions={
           <Button
             type="button"
@@ -169,67 +165,60 @@ export default function AdminDepartmentsContent() {
         </Card>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {activeDepartments.map((d) => {
-            const theme = deptThemeForId(d.id, d.colorIndex);
-            return (
-              <Card key={d.id} className="overflow-hidden">
-                <CardBody className="p-6">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-start gap-4">
-                      <div
-                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${theme.icon}`}
-                        aria-hidden
-                      >
-                        <Building2 className="h-6 w-6" strokeWidth={1.75} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-base font-semibold text-zinc-900">{d.name}</p>
-                        <p className="mt-1 text-sm text-zinc-400">
-                          {d.shortName ?? deptSlugFromId(d.id)} · {deptSlugFromId(d.id)}
-                        </p>
-                      </div>
+          {activeDepartments.map((d) => (
+            <Card key={d.id} className="overflow-hidden">
+              <CardBody className="p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-4">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600"
+                      aria-hidden
+                    >
+                      <Building2 className="h-6 w-6" strokeWidth={1.75} />
                     </div>
-                    <div className="flex shrink-0 gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(d.id)}
-                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
-                        aria-label={`แก้ไข ${d.name}`}
-                      >
-                        <Pencil className="h-4 w-4" aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeleteError(null);
-                          setDeleteId(d.id);
-                        }}
-                        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                        aria-label={`ลบ ${d.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      </button>
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold text-zinc-900">{d.name}</p>
+                      <p className="mt-1 text-sm text-zinc-400">
+                        {d.shortName ?? deptSlugFromId(d.id)} · {deptSlugFromId(d.id)}
+                      </p>
                     </div>
                   </div>
+                  <div className="flex shrink-0 gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(d.id)}
+                      className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+                      aria-label={`แก้ไข ${d.name}`}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteError(null);
+                        setDeleteId(d.id);
+                      }}
+                      className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      aria-label={`ลบ ${d.name}`}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                </div>
 
-                  <div className="mt-6 grid grid-cols-3 gap-3">
-                    <div className={`rounded-xl px-3 py-3.5 text-center ${theme.tile}`}>
-                      <p className="text-xl font-bold">{ticketCountByDept.get(d.id) ?? 0}</p>
-                      <p className="text-xs font-medium opacity-80">คำร้อง</p>
-                    </div>
-                    <div className="rounded-xl bg-blue-50 px-3 py-3.5 text-center text-blue-700">
-                      <p className="text-xl font-bold">{userCountByDept.get(d.id) ?? 0}</p>
-                      <p className="text-xs font-medium opacity-80">ผู้ใช้</p>
-                    </div>
-                    <div className="flex flex-col items-center justify-center rounded-xl bg-zinc-50 px-2 py-3.5">
-                      <span className={`h-6 w-6 rounded-full ${theme.dot}`} aria-hidden />
-                      <p className="mt-1.5 text-xs font-medium text-zinc-500">{theme.label}</p>
-                    </div>
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-zinc-50 px-3 py-3.5 text-center text-zinc-700">
+                    <p className="text-xl font-bold">{ticketCountByDept.get(d.id) ?? 0}</p>
+                    <p className="text-xs font-medium text-zinc-500">คำร้อง</p>
                   </div>
-                </CardBody>
-              </Card>
-            );
-          })}
+                  <div className="rounded-xl bg-zinc-50 px-3 py-3.5 text-center text-zinc-700">
+                    <p className="text-xl font-bold">{userCountByDept.get(d.id) ?? 0}</p>
+                    <p className="text-xs font-medium text-zinc-500">ผู้ใช้</p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          ))}
         </div>
       )}
 

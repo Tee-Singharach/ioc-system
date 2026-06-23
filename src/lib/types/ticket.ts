@@ -140,14 +140,12 @@ export interface TicketFormData {
   description: string;
   priority: Priority;
   departmentId: string;
-  categoryId: string;
-  requestDetails: Record<string, string>;
   scheduledStartAt: string;
   scheduledEndAt: string;
   attachmentNames: string[];
 }
 
-/** ค่าเริ่มต้นตอนแก้ไข */
+/** @deprecated ฟอร์มรวม — ไม่ใช้ฟิลด์ตามหมวดแล้ว */
 export type TicketFormInitialDetails = Record<
   string,
   string | number | RequestLineItem[] | RequestItemGroup

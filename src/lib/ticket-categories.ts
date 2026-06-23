@@ -1,3 +1,4 @@
+// ponytail: deprecated — ฟอร์มรวมทุกแผนกแล้ว เก็บ config ไว้ถ้าลูกค้าขอหมวดกลับมา (TODO)
 import type { RecommendedAction, RequestItemGroup, RequestLineItem } from "@/lib/types/ticket";
 import { RECOMMENDED_ACTIONS } from "@/lib/ticket-evaluation";
 

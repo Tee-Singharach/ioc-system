@@ -30,7 +30,7 @@ export function TicketStepper({
       />
       {!isTerminal && (
         <div
-          className="pointer-events-none absolute h-[3px] rounded-full bg-emerald-500 transition-[width] duration-300 ease-out"
+          className="pointer-events-none absolute h-[3px] rounded-full bg-blue-600 transition-[width] duration-300 ease-out"
           style={{
             top: DOT_CENTER - 1.5,
             left: TRACK_INSET,
@@ -54,7 +54,7 @@ export function TicketStepper({
               <div
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                   done
-                    ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25"
+                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
                     : active
                       ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25 ring-4 ring-blue-100"
                       : "border-2 border-zinc-200 bg-white text-zinc-400"

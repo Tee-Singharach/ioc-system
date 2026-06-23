@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge";
 type BadgeColor = NonNullable<ComponentProps<typeof Badge>["color"]>;
 
 const statusColors: Record<TicketStatus, BadgeColor> = {
-  "รอรับเรื่อง": "yellow",
-  "รออนุมัติ": "purple",
-  "กำลังดำเนินการ": "yellow",
+  "รอรับเรื่อง": "gray",
+  "รออนุมัติ": "yellow",
+  "กำลังดำเนินการ": "blue",
   "เสร็จสมบูรณ์": "green",
   "ปฏิเสธ": "red",
   "ยกเลิก": "gray",

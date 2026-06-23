@@ -13,7 +13,6 @@ export interface ManagedDepartment {
   id: string;
   name: string;
   shortName?: string;
-  colorIndex?: number;
   deletedAt?: string;
 }
 

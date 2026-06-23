@@ -33,11 +33,10 @@ interface MockAdminContextValue {
     slug: string;
     name: string;
     shortName: string;
-    colorIndex: number;
   }) => string | null;
   updateDepartment: (
     id: string,
-    input: { name: string; shortName: string; colorIndex: number },
+    input: { name: string; shortName: string },
   ) => string | null;
   renameDepartment: (id: string, name: string) => void;
   softDeleteDepartment: (id: string) => string | null;
@@ -127,7 +126,6 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
       slug: string;
       name: string;
       shortName: string;
-      colorIndex: number;
     }): string | null => {
       const name = input.name.trim();
       const shortName = input.shortName.trim();
@@ -144,7 +142,7 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
       }
       setDepartments((prev) => [
         ...prev,
-        { id, name, shortName, colorIndex: input.colorIndex },
+        { id, name, shortName },
       ]);
       appendLog("สร้างแผนก", id, `ชื่อแผนก: ${name}`);
       return null;
@@ -155,7 +153,7 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
   const updateDepartment = useCallback(
     (
       id: string,
-      input: { name: string; shortName: string; colorIndex: number },
+      input: { name: string; shortName: string },
     ): string | null => {
       const name = input.name.trim();
       const shortName = input.shortName.trim();
@@ -169,7 +167,7 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
       setDepartments((prev) =>
         prev.map((d) =>
           d.id === id
-            ? { ...d, name, shortName, colorIndex: input.colorIndex }
+            ? { ...d, name, shortName }
             : d,
         ),
       );

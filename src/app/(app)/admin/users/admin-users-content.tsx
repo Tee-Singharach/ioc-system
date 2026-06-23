@@ -202,7 +202,6 @@ export default function AdminUsersContent() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={Users}
-        iconClassName="bg-violet-100 text-violet-600"
         title="ผู้ใช้และบทบาท"
         description="จัดการบัญชีผู้ใช้และบทบาทในระบบ"
         actions={

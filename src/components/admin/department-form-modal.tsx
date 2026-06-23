@@ -1,7 +1,6 @@
 "use client";
 
 import { Pencil, Plus, X } from "lucide-react";
-import { DEPT_THEMES } from "@/lib/admin-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ModalPortal } from "@/components/ui/modal-portal";
@@ -10,7 +9,6 @@ export interface DepartmentFormValue {
   slug: string;
   name: string;
   shortName: string;
-  colorIndex: number;
 }
 
 export interface DepartmentFieldErrors {
@@ -43,7 +41,6 @@ export function DepartmentFormModal({
   if (!open) return null;
 
   const isEdit = mode === "edit";
-  const theme = DEPT_THEMES[value.colorIndex] ?? DEPT_THEMES[0];
 
   return (
     <ModalPortal>
@@ -62,11 +59,7 @@ export function DepartmentFormModal({
         >
           <div className="relative border-b border-zinc-100 px-6 py-5">
             <div className="flex items-start gap-3 pr-8">
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                  isEdit ? "bg-amber-100 text-amber-600" : "bg-blue-100 text-blue-600"
-                }`}
-              >
+              <div className="ioc-icon-box-brand flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
                 {isEdit ? (
                   <Pencil className="h-5 w-5" aria-hidden />
                 ) : (
@@ -129,33 +122,6 @@ export function DepartmentFormModal({
                 placeholder="เช่น Admin"
                 error={fieldErrors.shortName}
               />
-
-              <div>
-                <p className="ioc-label">สีประจำแผนก</p>
-                <div className="mt-2 flex flex-wrap gap-2.5">
-                  {DEPT_THEMES.map((t, i) => {
-                    const selected = value.colorIndex === i;
-                    return (
-                      <button
-                        key={t.label}
-                        type="button"
-                        onClick={() => onChange({ colorIndex: i })}
-                        className={`h-8 w-8 rounded-full transition-transform ${t.dot} ${
-                          selected
-                            ? `scale-110 ring-2 ring-offset-2 ${t.ring}`
-                            : "hover:scale-105"
-                        }`}
-                        aria-label={t.label}
-                        aria-pressed={selected}
-                      />
-                    );
-                  })}
-                </div>
-                <p className="mt-2 flex items-center gap-1.5 text-xs text-zinc-500">
-                  <span className={`h-2 w-2 rounded-full ${theme.dot}`} aria-hidden />
-                  {theme.label}
-                </p>
-              </div>
 
               {formError && <p className="text-sm text-red-600">{formError}</p>}
             </div>

@@ -99,7 +99,7 @@ export function OfficerActions({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+      <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-zinc-900">การดำเนินการ</h2>
           <Badge color="blue">เจ้าหน้าที่</Badge>
@@ -145,7 +145,7 @@ export function OfficerActions({
           )}
 
           {step === 2 && (
-            <p className="rounded-lg bg-amber-50 px-3 py-2.5 text-center text-xs leading-relaxed text-amber-800">
+            <p className="rounded-lg bg-zinc-100 px-3 py-2.5 text-center text-xs leading-relaxed text-zinc-600">
               รอผู้จัดการอนุมัติ — ยังไม่เริ่มดำเนินการจริง
             </p>
           )}
@@ -162,7 +162,7 @@ export function OfficerActions({
           )}
 
           {showAssign && (
-            <div className="border-t border-blue-100/80 pt-3">
+            <div className="border-t border-zinc-200/80 pt-3">
               <button
                 type="button"
                 onClick={() => setAssignOpen((open) => !open)}

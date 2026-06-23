@@ -39,7 +39,7 @@ export function ManagerActions({ ticket, onApprove, onReject }: ManagerActionsPr
   }
 
   return (
-    <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-4">
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-zinc-900">การอนุมัติ</h2>
         <Badge color="purple">ผู้จัดการ</Badge>

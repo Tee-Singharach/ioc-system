@@ -18,15 +18,11 @@ interface TicketCommentsProps {
   onDelete: (commentId: string) => void;
 }
 
-function PersonAvatar({ name, tone }: { name: string; tone: "blue" | "amber" }) {
-  const colors =
-    tone === "blue"
-      ? "bg-blue-100 text-blue-700"
-      : "bg-amber-100 text-amber-700";
+function PersonAvatar({ name }: { name: string }) {
   return (
     <div
       aria-hidden
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${colors}`}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600"
     >
       {userInitials(name)}
     </div>
@@ -44,7 +40,7 @@ const CreationFeedItem = memo(function CreationFeedItem({
 }) {
   return (
     <li className="flex gap-3">
-      <PersonAvatar name={authorName} tone="blue" />
+      <PersonAvatar name={authorName} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-semibold text-zinc-900">{authorName}</span>
@@ -83,7 +79,7 @@ const CommentFeedItem = memo(function CommentFeedItem({
 
   return (
     <li className="flex gap-3">
-      <PersonAvatar name={comment.authorName} tone="blue" />
+      <PersonAvatar name={comment.authorName} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">

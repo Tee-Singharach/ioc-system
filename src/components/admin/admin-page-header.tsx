@@ -11,7 +11,7 @@ interface AdminPageHeaderProps {
 
 export function AdminPageHeader({
   icon: Icon,
-  iconClassName = "bg-blue-100 text-blue-600",
+  iconClassName = "ioc-icon-box-brand",
   title,
   description,
   actions,

@@ -1,40 +1,11 @@
 import type { AuditLogEntry, ManagedDepartment, ManagedUser } from "@/lib/types/admin";
-import type { Department, RecommendedAction, RequestItemGroup, Ticket, TicketEvaluation, User } from "@/lib/types/ticket";
-import { getCategoriesForDepartment, getCategoryConfig } from "@/lib/ticket-categories";
-import { aggregateEquipmentEvaluation, getPerUnitEvaluationField } from "@/lib/ticket-evaluation-units";
+import type { Department, RecommendedAction, Ticket, TicketEvaluation, User } from "@/lib/types/ticket";
 
 const OFFICER_EVAL = {
   evaluatedAt: "2026-06-13T10:45:00.000Z",
   evaluatedById: "officer-001",
   evaluatedByName: "วิชัย เจ้าหน้าที่",
 } as const;
-
-/** ผลประเมินซ่อม/บำรุง — รูปแบบต่อเครื่อง (ตรงฟอร์มล่าสุด) */
-function mockRepairEvaluation(
-  requestUnits: Record<string, string>[],
-  evalUnits: {
-    diagnosis: string;
-    recommendedAction: RecommendedAction;
-    partsNeeded?: string;
-    estimatedCost?: string;
-  }[],
-  notes?: string,
-  meta: Pick<TicketEvaluation, "evaluatedAt" | "evaluatedById" | "evaluatedByName"> = OFFICER_EVAL,
-): TicketEvaluation {
-  const evalField = getPerUnitEvaluationField("it-repair")!;
-  const group: RequestItemGroup = {
-    itemName: "",
-    quantity: String(evalUnits.length),
-    units: evalUnits.map((u) => ({
-      diagnosis: u.diagnosis,
-      recommendedAction: u.recommendedAction,
-      partsNeeded: u.partsNeeded ?? "",
-      estimatedCost: u.estimatedCost ?? "",
-    })),
-  };
-  const agg = aggregateEquipmentEvaluation(group, evalField, requestUnits);
-  return { ...agg, notes, ...meta };
-}
 
 function mockStandardEvaluation(
   partial: Omit<TicketEvaluation, "evaluatedAt" | "evaluatedById" | "evaluatedByName"> &
@@ -134,11 +105,11 @@ export const INITIAL_MANAGED_USERS: ManagedUser[] = [
 ];
 
 export const INITIAL_MANAGED_DEPARTMENTS: ManagedDepartment[] = [
-  { id: "dept-it", name: "เทคโนโลยีสารสนเทศ", shortName: "IT", colorIndex: 0 },
-  { id: "dept-hr", name: "ทรัพยากรบุคคล", shortName: "HR", colorIndex: 1 },
-  { id: "dept-finance", name: "การเงิน", shortName: "Finance", colorIndex: 2 },
-  { id: "dept-ops", name: "ปฏิบัติการ", shortName: "Ops", colorIndex: 3 },
-  { id: "dept-admin", name: "บริหารทั่วไป", shortName: "Admin", colorIndex: 0 },
+  { id: "dept-it", name: "เทคโนโลยีสารสนเทศ", shortName: "IT" },
+  { id: "dept-hr", name: "ทรัพยากรบุคคล", shortName: "HR" },
+  { id: "dept-finance", name: "การเงิน", shortName: "Finance" },
+  { id: "dept-ops", name: "ปฏิบัติการ", shortName: "Ops" },
+  { id: "dept-admin", name: "บริหารทั่วไป", shortName: "Admin" },
   { id: "dept-old", name: "แผนกเลิกใช้", shortName: "Old", deletedAt: "2024-05-20T11:00:00" },
 ];
 
@@ -190,12 +161,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-software",
-    categoryLabel: "ติดตั้งซอฟต์แวร์",
-    requestDetails: {
-      softwareName: "Adobe Acrobat Pro",
-      targetDevice: "IT-NB-0012",
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-16T02:00:00.000Z",
@@ -216,12 +181,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-access",
-    categoryLabel: "ขอสิทธิ์/บัญชี",
-    requestDetails: {
-      systemName: "ERP",
-      accessReason: "ลืมรหัสผ่าน ขอรีเซ็ตเพื่อเข้าทำรายงานประจำวัน",
-    },
     requesterId: "staff-002",
     requesterName: "มานี มีสุข",
     scheduledStartAt: "2026-06-14T01:00:00.000Z",
@@ -242,22 +201,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รออนุมัติ",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-repair",
-    categoryLabel: "ซ่อม/บำรุง",
-    requestDetails: {
-      equipment: {
-        itemName: "",
-        quantity: "1",
-        units: [
-          {
-            itemName: "เครื่องปริ้นเตอร์",
-            assetTag: "PRT-3F-01",
-            symptom: "ติดกระดาษและพิมพ์ไม่ออก",
-            location: "ชั้น 3",
-          },
-        ],
-      },
-    },
     requesterId: "staff-003",
     requesterName: "วิไล สุขใจ",
     scheduledStartAt: "2026-06-15T03:00:00.000Z",
@@ -267,25 +210,11 @@ const RAW_TICKETS: Ticket[] = [
     assigneeId: "officer-001",
     assigneeName: "วิชัย เจ้าหน้าที่",
     assigneeDepartmentId: "dept-it",
-    evaluation: mockRepairEvaluation(
-      [
-        {
-          itemName: "เครื่องปริ้นเตอร์",
-          assetTag: "PRT-3F-01",
-          symptom: "ติดกระดาษและพิมพ์ไม่ออก",
-          location: "ชั้น 3",
-        },
-      ],
-      [
-        {
-          diagnosis: "ตรวจพบติดกระดาษใน fuser และหัวพิมพ์สึก ต้องส่งศูนย์ซ่อม",
-          recommendedAction: "external_repair",
-          partsNeeded: "fuser assembly",
-          estimatedCost: "2500",
-        },
-      ],
-      "ยังไม่รับเครื่องออก — รอผู้จัดการอนุมัติก่อน",
-    ),
+    evaluation: mockStandardEvaluation({
+      diagnosis: "ตรวจพบติดกระดาษใน fuser และหัวพิมพ์สึก ต้องส่งศูนย์ซ่อม",
+      recommendedAction: "external_repair",
+      estimatedCost: 2500,
+    }),
     attachments: [{ id: "att-2", name: "รูปเครื่องปริ้น.jpg", size: 1_200_000 }],
     comments: [
       {
@@ -341,12 +270,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รออนุมัติ",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-access",
-    categoryLabel: "ขอสิทธิ์/บัญชี",
-    requestDetails: {
-      systemName: "โฟลเดอร์แชร์ finance-reports",
-      accessReason: "ต้องการเข้าถึงรายงานการเงินประจำเดือนตามบทบาทงาน",
-    },
     requesterId: "staff-004",
     requesterName: "กมล ทำงาน",
     scheduledStartAt: "2026-06-13T02:00:00.000Z",
@@ -395,11 +318,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-hr",
     departmentName: "ทรัพยากรบุคคล",
-    categoryId: "hr-info",
-    categoryLabel: "ข้อมูลพนักงาน",
-    requestDetails: {
-      infoTopic: "ขอเปลี่ยนบัญชีธนาคารเงินเดือนจากกรุงไทย เป็นกรุงเทพ พร้อมแนบสำเนาหน้าบัญชี",
-    },
     requesterId: "staff-005",
     requesterName: "อรุณ มั่นคง",
     scheduledStartAt: "2026-06-17T02:00:00.000Z",
@@ -420,16 +338,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "เสร็จสมบูรณ์",
     departmentId: "dept-admin",
     departmentName: "บริหารทั่วไป",
-    categoryId: "admin-supplies",
-    categoryLabel: "เบิกวัสดุ",
-    requestDetails: {
-      items: {
-        itemName: "กระดาษ A4",
-        quantity: "5",
-        unit: "รีม",
-        units: [],
-      },
-    },
     requesterId: "staff-006",
     requesterName: "ปิยะ สะอาด",
     scheduledStartAt: "2026-06-10T01:00:00.000Z",
@@ -442,7 +350,7 @@ const RAW_TICKETS: Ticket[] = [
     evaluation: mockStandardEvaluation({
       diagnosis: "มีสต็อกกระดาษ A4 เพียงพอในคลัง",
       recommendedAction: "proceed",
-      details: { stockNote: "เบิกจากคลังชั้น B" },
+      notes: "เบิกจากคลังชั้น B",
       evaluatedAt: "2026-06-09T09:30:00.000Z",
     }),
     attachments: [],
@@ -483,22 +391,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "กำลังดำเนินการ",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-repair",
-    categoryLabel: "ซ่อม/บำรุง",
-    requestDetails: {
-      equipment: {
-        itemName: "",
-        quantity: "1",
-        units: [
-          {
-            itemName: "คอมพิวเตอร์",
-            assetTag: "IT-PC-0042",
-            symptom: "ทำงานช้า หน่วยความจำไม่พอเมื่อเปิดหลายโปรแกรม",
-            location: "ชั้น 2 ฝ่ายบัญชี",
-          },
-        ],
-      },
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-18T02:00:00.000Z",
@@ -508,26 +400,12 @@ const RAW_TICKETS: Ticket[] = [
     assigneeId: "officer-001",
     assigneeName: "วิชัย เจ้าหน้าที่",
     assigneeDepartmentId: "dept-it",
-    evaluation: mockRepairEvaluation(
-      [
-        {
-          itemName: "คอมพิวเตอร์",
-          assetTag: "IT-PC-0042",
-          symptom: "ทำงานช้า หน่วยความจำไม่พอเมื่อเปิดหลายโปรแกรม",
-          location: "ชั้น 2 ฝ่ายบัญชี",
-        },
-      ],
-      [
-        {
-          diagnosis: "ตรวจสอบแล้ว RAM 8GB ไม่เพียงพอ แนะนำอัปเกรดเป็น 16GB",
-          recommendedAction: "replace_part",
-          partsNeeded: "RAM DDR4 16GB",
-          estimatedCost: "1800",
-        },
-      ],
-      "สั่ง RAM แล้ว รอของเข้าคลัง",
-      { ...OFFICER_EVAL, evaluatedAt: "2026-06-14T15:30:00.000Z" },
-    ),
+    evaluation: mockStandardEvaluation({
+      diagnosis: "ตรวจสอบแล้ว RAM 8GB ไม่เพียงพอ แนะนำอัปเกรดเป็น 16GB",
+      recommendedAction: "replace_part",
+      estimatedCost: 1800,
+      notes: "สั่ง RAM แล้ว รอของเข้าคลัง",
+    }),
     attachments: [],
     comments: [
       {
@@ -584,12 +462,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "ปฏิเสธ",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-software",
-    categoryLabel: "ติดตั้งซอฟต์แวร์",
-    requestDetails: {
-      softwareName: "Figma Professional",
-      targetDevice: "ทีมออกแบบ (5 ที่นั่ง)",
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-14T02:00:00.000Z",
@@ -634,35 +506,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-hr",
     departmentName: "ทรัพยากรบุคคล",
-    categoryId: "hr-leave",
-    categoryLabel: "ลางาน",
-    requestDetails: { leaveType: "ลาพักร้อน", leaveDates: "23–25 มิ.ย. 2569" },
-    requesterId: "staff-001",
-    requesterName: "สมชาย ใจดี",
-    scheduledStartAt: "2026-06-23T01:00:00.000Z",
-    scheduledEndAt: "2026-06-25T09:00:00.000Z",
-    attachments: [{ id: "att-5", name: "แบบฟอร์มลา.pdf", size: 128_000 }],
-    comments: [],
-    progressNotes: [],
-    statusHistory: [{ status: "รอรับเรื่อง", at: "2026-06-16T03:00:00.000Z" }],
-    createdAt: "2026-06-16T03:00:00.000Z",
-    updatedAt: "2026-06-16T03:00:00.000Z",
-  },
-  {
-    id: "tkt-010",
-    ticketNo: "IOC-2026-010",
-    title: "ขอเปิดสิทธิ์ VPN ทำงานนอกสถานที่",
-    description: "ต้องการเข้าใช้งานระบบภายในจากบ้านในช่วงวันที่ 20–22 มิ.ย.",
-    priority: "สูง",
-    status: "รอรับเรื่อง",
-    departmentId: "dept-it",
-    departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-access",
-    categoryLabel: "ขอสิทธิ์/บัญชี",
-    requestDetails: {
-      systemName: "VPN",
-      accessReason: "ทำงานนอกสถานที่ช่วง 20–22 มิ.ย.",
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-20T01:00:00.000Z",
@@ -683,12 +526,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "กำลังดำเนินการ",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-access",
-    categoryLabel: "ขอสิทธิ์/บัญชี",
-    requestDetails: {
-      systemName: "Microsoft 365 / Exchange Online",
-      accessReason: "ย้าย mailbox จาก on-premise ก่อนปิดระบบเดิมสิ้นเดือน",
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-19T02:00:00.000Z",
@@ -742,11 +579,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "เสร็จสมบูรณ์",
     departmentId: "dept-hr",
     departmentName: "ทรัพยากรบุคคล",
-    categoryId: "hr-info",
-    categoryLabel: "ข้อมูลพนักงาน",
-    requestDetails: {
-      infoTopic: "ออกบัตรพนักงานใหม่ทดแทนบัตรหาย พร้อมรูปถ่ายใหม่",
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-11T02:00:00.000Z",
@@ -805,8 +637,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-admin",
     departmentName: "บริหารทั่วไป",
-    categoryId: "admin-general",
-    categoryLabel: "ทั่วไป",
     requesterId: "staff-002",
     requesterName: "มานี มีสุข",
     scheduledStartAt: "2026-06-24T06:00:00.000Z",
@@ -827,15 +657,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "ยกเลิก",
     departmentId: "dept-finance",
     departmentName: "การเงิน",
-    categoryId: "fin-payment",
-    categoryLabel: "บัญชี/เบิกจ่าย",
-    requestDetails: {
-      items: {
-        itemName: "ค่าเดินทางและที่พักเชียงใหม่",
-        quantity: "8500",
-        units: [],
-      },
-    },
     requesterId: "staff-003",
     requesterName: "วิไล สุขใจ",
     scheduledStartAt: "2026-06-18T01:00:00.000Z",
@@ -859,15 +680,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "กำลังดำเนินการ",
     departmentId: "dept-finance",
     departmentName: "การเงิน",
-    categoryId: "fin-payment",
-    categoryLabel: "บัญชี/เบิกจ่าย",
-    requestDetails: {
-      items: {
-        itemName: "วัสดุส่งเสริมการขาย Q2",
-        quantity: "45000",
-        units: [],
-      },
-    },
     requesterId: "staff-004",
     requesterName: "กมล ทำงาน",
     scheduledStartAt: "2026-06-17T03:00:00.000Z",
@@ -881,7 +693,7 @@ const RAW_TICKETS: Ticket[] = [
       diagnosis: "ใบเสนอราคาตรงงบโครงการ Q2",
       recommendedAction: "proceed",
       estimatedCost: 45000,
-      details: { vendor: "บจก. สื่อโฆษณา ABC", quotedCost: 45000 },
+      notes: "ผู้ขาย: บจก. สื่อโฆษณา ABC",
       evaluatedAt: "2026-06-16T06:30:00.000Z",
       evaluatedById: "officer-004",
       evaluatedByName: "นภา การเงิน",
@@ -923,11 +735,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รออนุมัติ",
     departmentId: "dept-hr",
     departmentName: "ทรัพยากรบุคคล",
-    categoryId: "hr-info",
-    categoryLabel: "ข้อมูลพนักงาน",
-    requestDetails: {
-      infoTopic: "ขออนุมัติเข้าอบรม Project Management วันที่ 2–3 ก.ค. 2569 ค่าอบรม 12,000 บาท",
-    },
     requesterId: "staff-005",
     requesterName: "อรุณ มั่นคง",
     scheduledStartAt: "2026-07-02T01:00:00.000Z",
@@ -977,22 +784,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-repair",
-    categoryLabel: "ซ่อม/บำรุง",
-    requestDetails: {
-      equipment: {
-        itemName: "",
-        quantity: "1",
-        units: [
-          {
-            itemName: "โน้ตบุ๊ก",
-            assetTag: "IT-NB-0007",
-            symptom: "หน้าจอแตก ใช้งานไม่ได้ ขอเครื่องทดแทนชั่วคราว",
-            location: "ชั้น 3",
-          },
-        ],
-      },
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-17T01:00:00.000Z",
@@ -1013,12 +804,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "เสร็จสมบูรณ์",
     departmentId: "dept-ops",
     departmentName: "ปฏิบัติการ",
-    categoryId: "ops-service",
-    categoryLabel: "ขอบริการ/งาน",
-    requestDetails: {
-      scope: "ติดตั้งและตรวจสอบระบบแอร์ห้องปฏิบัติการ",
-      location: "ห้อง lab ชั้น 2",
-    },
     requesterId: "staff-002",
     requesterName: "มานี มีสุข",
     scheduledStartAt: "2026-06-08T02:00:00.000Z",
@@ -1032,7 +817,7 @@ const RAW_TICKETS: Ticket[] = [
       diagnosis: "จัดช่างและอะไหล่ได้ภายใน 1 วัน",
       recommendedAction: "proceed",
       estimatedCost: 15000,
-      details: { manpower: 2, estimatedCost: 15000 },
+      notes: "ใช้แรงคน 2 คน",
       evaluatedAt: "2026-06-07T07:30:00.000Z",
     }),
     attachments: [],
@@ -1073,12 +858,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-access",
-    categoryLabel: "ขอสิทธิ์/บัญชี",
-    requestDetails: {
-      systemName: "File Server โครงการ",
-      accessReason: "โฟลเดอร์โครงการเต็ม ขอเพิ่ม quota จาก 50 GB เป็น 100 GB",
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-21T02:00:00.000Z",
@@ -1099,11 +878,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "ปฏิเสธ",
     departmentId: "dept-hr",
     departmentName: "ทรัพยากรบุคคล",
-    categoryId: "hr-info",
-    categoryLabel: "ข้อมูลพนักงาน",
-    requestDetails: {
-      infoTopic: "ขอเปลี่ยนเป็นกะเช้า 1 เดือน เนื่องจากดูแลผู้ป่วยที่บ้าน",
-    },
     requesterId: "staff-003",
     requesterName: "วิไล สุขใจ",
     scheduledStartAt: "2026-07-01T01:00:00.000Z",
@@ -1145,12 +919,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "เสร็จสมบูรณ์",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-software",
-    categoryLabel: "ติดตั้งซอฟต์แวร์",
-    requestDetails: {
-      softwareName: "Trend Micro Apex One",
-      targetDevice: "IT-NB-0031",
-    },
     requesterId: "staff-002",
     requesterName: "มานี มีสุข",
     scheduledStartAt: "2026-06-10T02:00:00.000Z",
@@ -1197,28 +965,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-repair",
-    categoryLabel: "ซ่อม/บำรุง",
-    requestDetails: {
-      equipment: {
-        itemName: "",
-        quantity: "2",
-        units: [
-          {
-            itemName: "คอมพิวเตอร์",
-            assetTag: "IT-NB-0018",
-            symptom: "เปิดเครื่องไม่ติด ไฟเข้าแต่ไม่ boot",
-            location: "ชั้น 2 ห้องบัญชี",
-          },
-          {
-            itemName: "เครื่องปริ้นเตอร์",
-            assetTag: "PRT-2F-03",
-            symptom: "ติดกระดาษ ไม่ดูดกระดาษเข้า",
-            location: "ชั้น 2 ห้องบัญชี",
-          },
-        ],
-      },
-    },
     requesterId: "staff-002",
     requesterName: "มานี มีสุข",
     scheduledStartAt: "2026-06-18T02:00:00.000Z",
@@ -1251,28 +997,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-repair",
-    categoryLabel: "ซ่อม/บำรุง",
-    requestDetails: {
-      equipment: {
-        itemName: "",
-        quantity: "2",
-        units: [
-          {
-            itemName: "โน้ตบุ๊ก",
-            assetTag: "IT-NB-0024",
-            symptom: "จอมืด มีเสียงพัดลมแต่ไม่มีภาพ",
-            location: "ชั้น 4 ฝ่ายขาย",
-          },
-          {
-            itemName: "เครื่องสแกน",
-            assetTag: "SCN-4F-01",
-            symptom: "สแกนแล้วไฟล์ไม่เข้าเครื่อง",
-            location: "ชั้น 4 ฝ่ายขาย",
-          },
-        ],
-      },
-    },
     requesterId: "staff-004",
     requesterName: "กมล ทำงาน",
     scheduledStartAt: "2026-06-19T02:00:00.000Z",
@@ -1293,28 +1017,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รออนุมัติ",
     departmentId: "dept-it",
     departmentName: "เทคโนโลยีสารสนเทศ",
-    categoryId: "it-repair",
-    categoryLabel: "ซ่อม/บำรุง",
-    requestDetails: {
-      equipment: {
-        itemName: "",
-        quantity: "2",
-        units: [
-          {
-            itemName: "คอมพิวเตอร์",
-            assetTag: "IT-PC-0011",
-            symptom: "เปิดโปรแกรมหนักแล้วค้าง",
-            location: "ชั้น 1 ฝ่ายการตลาด",
-          },
-          {
-            itemName: "เครื่องปริ้นเตอร์",
-            assetTag: "PRT-1F-02",
-            symptom: "พิมพ์จางและมีเส้นขาว",
-            location: "ชั้น 1 ฝ่ายการตลาด",
-          },
-        ],
-      },
-    },
     requesterId: "staff-004",
     requesterName: "กมล ทำงาน",
     scheduledStartAt: "2026-06-19T02:00:00.000Z",
@@ -1324,38 +1026,12 @@ const RAW_TICKETS: Ticket[] = [
     assigneeId: "officer-001",
     assigneeName: "วิชัย เจ้าหน้าที่",
     assigneeDepartmentId: "dept-it",
-    evaluation: mockRepairEvaluation(
-      [
-        {
-          itemName: "คอมพิวเตอร์",
-          assetTag: "IT-PC-0011",
-          symptom: "เปิดโปรแกรมหนักแล้วค้าง",
-          location: "ชั้น 1 ฝ่ายการตลาด",
-        },
-        {
-          itemName: "เครื่องปริ้นเตอร์",
-          assetTag: "PRT-1F-02",
-          symptom: "พิมพ์จางและมีเส้นขาว",
-          location: "ชั้น 1 ฝ่ายการตลาด",
-        },
-      ],
-      [
-        {
-          diagnosis: "RAM 4GB ไม่พอ แนะนำเพิ่มเป็น 16GB",
-          recommendedAction: "replace_part",
-          partsNeeded: "RAM DDR4 16GB",
-          estimatedCost: "1600",
-        },
-        {
-          diagnosis: "หัวพิมพ์สึก ต้องเปลี่ยนชุดหัวพิมพ์",
-          recommendedAction: "replace_part",
-          partsNeeded: "หัวพิมพ์ HP M404",
-          estimatedCost: "2200",
-        },
-      ],
-      "แนวทางรวม: เปลี่ยนอะไหล่ทั้งสองเครื่อง",
-      { ...OFFICER_EVAL, evaluatedAt: "2026-06-18T11:00:00.000Z" },
-    ),
+    evaluation: mockStandardEvaluation({
+      diagnosis: "RAM 4GB ไม่พอ แนะนำเพิ่มเป็น 16GB",
+      recommendedAction: "replace_part",
+      estimatedCost: 1600,
+      notes: "แนวทางรวม: เปลี่ยนอะไหล่ทั้งสองเครื่อง",
+    }),
     attachments: [],
     comments: [],
     progressNotes: [],
@@ -1384,56 +1060,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-hr",
     departmentName: "ทรัพยากรบุคคล",
-    categoryId: "hr-leave",
-    categoryLabel: "ลางาน",
-    requestDetails: { leaveType: "ลาป่วย", leaveDates: "19 มิ.ย. 2569" },
-    requesterId: "staff-003",
-    requesterName: "วิไล สุขใจ",
-    scheduledStartAt: "2026-06-19T01:00:00.000Z",
-    scheduledEndAt: "2026-06-19T09:00:00.000Z",
-    attachments: [{ id: "att-23", name: "ใบรับรองแพทย์.pdf", size: 95_000 }],
-    comments: [],
-    progressNotes: [],
-    statusHistory: [{ status: "รอรับเรื่อง", at: "2026-06-17T11:00:00.000Z" }],
-    createdAt: "2026-06-17T11:00:00.000Z",
-    updatedAt: "2026-06-17T11:00:00.000Z",
-  },
-  {
-    id: "tkt-024",
-    ticketNo: "IOC-2026-024",
-    title: "ขอเปลี่ยนที่จอดรถประจำ",
-    description: "ย้ายแผนกมาชั้น 3 ขอเปลี่ยนบัตรจอดรถใกล้ลิฟต์",
-    priority: "ต่ำ",
-    status: "รอรับเรื่อง",
-    departmentId: "dept-admin",
-    departmentName: "บริหารทั่วไป",
-    categoryId: "admin-general",
-    categoryLabel: "ทั่วไป",
-    requesterId: "staff-005",
-    requesterName: "อรุณ มั่นคง",
-    scheduledStartAt: "2026-06-20T02:00:00.000Z",
-    scheduledEndAt: "2026-06-20T04:00:00.000Z",
-    attachments: [],
-    comments: [],
-    progressNotes: [],
-    statusHistory: [{ status: "รอรับเรื่อง", at: "2026-06-17T12:00:00.000Z" }],
-    createdAt: "2026-06-17T12:00:00.000Z",
-    updatedAt: "2026-06-17T12:00:00.000Z",
-  },
-  {
-    id: "tkt-025",
-    ticketNo: "IOC-2026-025",
-    title: "ขอความช่วยเหลือเรื่องเอกสารส่ง กยศ.",
-    description: "ต้องการคำแนะนำเอกสารและขั้นตอนส่ง กยศ. สำหรับพนักงานใหม่",
-    priority: "ปานกลาง",
-    status: "รอรับเรื่อง",
-    departmentId: "dept-hr",
-    departmentName: "ทรัพยากรบุคคล",
-    categoryId: "hr-info",
-    categoryLabel: "ข้อมูลพนักงาน",
-    requestDetails: {
-      infoTopic: "ขอคู่มือและ checklist เอกสารส่ง กยศ. สำหรับพนักงานที่เริ่มงานเดือนกรกฎาคม",
-    },
     requesterId: "staff-006",
     requesterName: "ปิยะ สะอาด",
     scheduledStartAt: "2026-06-21T02:00:00.000Z",
@@ -1454,12 +1080,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-ops",
     departmentName: "ปฏิบัติการ",
-    categoryId: "ops-service",
-    categoryLabel: "ขอบริการ/งาน",
-    requestDetails: {
-      scope: "จัดห้องประชุม U-shape 20 ที่นั่ง ติดตั้งโปรเจคเตอร์และไมค์",
-      location: "ห้องประชุม A ชั้น 1",
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-20T01:00:00.000Z",
@@ -1480,15 +1100,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-finance",
     departmentName: "การเงิน",
-    categoryId: "fin-payment",
-    categoryLabel: "บัญชี/เบิกจ่าย",
-    requestDetails: {
-      items: {
-        itemName: "ค่าอุปกรณ์ประชุม (ไมค์ + สาย HDMI)",
-        quantity: "3500",
-        units: [],
-      },
-    },
     requesterId: "staff-001",
     requesterName: "สมชาย ใจดี",
     scheduledStartAt: "2026-06-22T02:00:00.000Z",
@@ -1509,8 +1120,6 @@ const RAW_TICKETS: Ticket[] = [
     status: "รอรับเรื่อง",
     departmentId: "dept-ops",
     departmentName: "ปฏิบัติการ",
-    categoryId: "ops-general",
-    categoryLabel: "ทั่วไป",
     requesterId: "staff-006",
     requesterName: "ปิยะ สะอาด",
     scheduledStartAt: "2026-06-18T03:00:00.000Z",
@@ -1524,14 +1133,7 @@ const RAW_TICKETS: Ticket[] = [
   },
 ];
 
-function enrichTicket(t: Ticket): Ticket {
-  const categoryId = t.categoryId ?? getCategoriesForDepartment(t.departmentId)[0]?.id;
-  if (!categoryId) return t;
-  const categoryLabel = t.categoryLabel ?? getCategoryConfig(categoryId)?.label;
-  return { ...t, categoryId, categoryLabel };
-}
-
-export const INITIAL_TICKETS: Ticket[] = RAW_TICKETS.map(enrichTicket);
+export const INITIAL_TICKETS: Ticket[] = RAW_TICKETS;
 
 export function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

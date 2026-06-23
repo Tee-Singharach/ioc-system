@@ -13,7 +13,7 @@ export default function NewTicketPage() {
     <div className="mx-auto w-full max-w-5xl space-y-8">
       <PageHeader
         title="สร้างคำร้องใหม่"
-        description="เลือกแผนกและหมวด แล้วกรอกข้อมูลให้ครบ"
+        description="เลือกแผนกและกรอกข้อมูลให้ครบ"
       />
       <TicketForm
         onSubmit={(data) => {

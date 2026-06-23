@@ -1,15 +1,4 @@
-import type { RecommendedAction, RequestItemGroup, Ticket, TicketEvaluation } from "@/lib/types/ticket";
-import {
-  getEvaluationFields,
-  getRecommendedActionsForCategory,
-  resolveCategoryId,
-  validateFieldValues,
-  type FieldValues,
-} from "@/lib/ticket-categories";
-import {
-  buildPerUnitEvaluationPayload,
-  usesPerUnitEvaluation,
-} from "@/lib/ticket-evaluation-units";
+import type { RecommendedAction, Ticket, TicketEvaluation } from "@/lib/types/ticket";
 
 export const RECOMMENDED_ACTIONS: { value: RecommendedAction; label: string }[] = [
   { value: "repair_onsite", label: "ซ่อมได้หน้างาน" },
@@ -24,56 +13,25 @@ export function recommendedActionLabel(action: RecommendedAction): string {
   return RECOMMENDED_ACTIONS.find((a) => a.value === action)?.label ?? action;
 }
 
-function evaluationPayloadToFieldValues(e: Pick<TicketEvaluation, "details" | "estimatedCost">): FieldValues {
-  const out: FieldValues = {};
-  if (e.details) {
-    for (const [k, v] of Object.entries(e.details)) out[k] = String(v);
-  }
-  if (e.estimatedCost != null && !out.estimatedCost && !out.quotedCost) {
-    out.estimatedCost = String(e.estimatedCost);
-  }
-  return out;
-}
-
-/** ใช้กฎเดียวกับฟอร์มประเมิน */
+/** ฟอร์มประเมินมาตรฐานเดียวทุกคำร้อง */
 export function validateEvaluationPayload(
-  ticket: Pick<Ticket, "categoryId" | "departmentId" | "requestDetails">,
+  _ticket: Pick<Ticket, "departmentId">,
   payload: {
     diagnosis?: string;
     recommendedAction?: RecommendedAction | "";
-    details?: Record<string, string | number | RequestItemGroup>;
     estimatedCost?: number;
   },
-  formValues?: FieldValues,
 ): Record<string, string> {
-  const categoryId = resolveCategoryId(ticket);
-  if (usesPerUnitEvaluation(ticket)) {
-    if (formValues) {
-      const errors = validateFieldValues(getEvaluationFields(categoryId), formValues);
-      const built = buildPerUnitEvaluationPayload(categoryId, ticket, formValues);
-      if (!built?.diagnosis.trim()) errors.equipment = "กรุณากรอกผลประเมินให้ครบทุกเครื่อง";
-      return errors;
-    }
-    const errors: Record<string, string> = {};
-    if (!payload.diagnosis?.trim()) errors.diagnosis = "กรุณาระบุผลการตรวจสอบ";
-    if (!payload.recommendedAction) errors.recommendedAction = "กรุณาเลือกแนวทาง";
-    return errors;
-  }
-
   const errors: Record<string, string> = {};
   if (!payload.diagnosis?.trim()) errors.diagnosis = "กรุณาระบุผลการตรวจสอบ";
   if (!payload.recommendedAction) errors.recommendedAction = "กรุณาเลือกแนวทาง";
-  const fields = getEvaluationFields(categoryId);
-  Object.assign(errors, validateFieldValues(fields, evaluationPayloadToFieldValues(payload)));
   return errors;
 }
 
-export function hasCompleteEvaluation(
-  ticket: Pick<Ticket, "evaluation" | "categoryId" | "departmentId" | "requestDetails">,
-): boolean {
+export function hasCompleteEvaluation(ticket: Pick<Ticket, "evaluation">): boolean {
   const e = ticket.evaluation;
   if (!e) return false;
-  return Object.keys(validateEvaluationPayload(ticket, e)).length === 0;
+  return Object.keys(validateEvaluationPayload({ departmentId: "" }, e)).length === 0;
 }
 
 export function canEditEvaluation(ticket: Ticket): boolean {
@@ -93,32 +51,9 @@ export function evaluationSummary(e: TicketEvaluation): string {
   return parts.join(" · ");
 }
 
-export function actionsForCategory(categoryId: string) {
-  const allowed = new Set(getRecommendedActionsForCategory(categoryId));
-  return RECOMMENDED_ACTIONS.filter((a) => allowed.has(a.value));
-}
-
-export function parseEvaluationDetails(
-  categoryId: string,
-  details: FieldValues,
-): { details: Record<string, string | number>; estimatedCost?: number } {
-  const fields = getEvaluationFields(categoryId);
-  const out: Record<string, string | number> = {};
-  let estimatedCost: number | undefined;
-
-  for (const f of fields) {
-    const raw = String(details[f.key] ?? "").trim();
-    if (!raw) continue;
-    if (f.kind === "currency" || f.kind === "number") {
-      const n = Number(raw.replace(/,/g, ""));
-      if (!Number.isNaN(n)) {
-        out[f.key] = n;
-        if (f.kind === "currency" && estimatedCost == null) estimatedCost = n;
-      }
-    } else {
-      out[f.key] = raw;
-    }
-  }
-
-  return { details: out, estimatedCost };
+export function parseEstimatedCost(raw: string): number | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const n = Number(trimmed.replace(/,/g, ""));
+  return Number.isNaN(n) ? undefined : n;
 }

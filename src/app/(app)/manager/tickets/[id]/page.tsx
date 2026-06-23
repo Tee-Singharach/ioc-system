@@ -16,29 +16,17 @@ import { StatusBadge } from "@/components/tickets/status-badge";
 import { TicketComments } from "@/components/tickets/ticket-comments";
 import { TicketStepper } from "@/components/tickets/ticket-stepper";
 import { EvaluationCard } from "@/components/tickets/ticket-evaluation";
-import { RequestDetailsCard } from "@/components/tickets/request-details-card";
-import { resolveCategoryId } from "@/lib/ticket-categories";
 import { Card, CardBody } from "@/components/ui/card";
 
-function PersonField({
-  label,
-  name,
-  tone,
-}: {
-  label: string;
-  name: string;
-  tone: "blue" | "amber" | "none";
-}) {
+function PersonField({ label, name }: { label: string; name: string }) {
   return (
     <div>
       <p className="text-xs font-medium text-zinc-500">{label}</p>
       <div className="mt-1.5 flex items-center gap-2">
-        {tone !== "none" && name !== "—" && (
+        {name !== "—" && (
           <div
             aria-hidden
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-              tone === "blue" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-            }`}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600"
           >
             {userInitials(name)}
           </div>
@@ -106,19 +94,21 @@ export default function ManagerTicketDetailPage({ params }: { params: Promise<{ 
           <Card>
             <CardBody className="space-y-6 p-5 sm:p-6">
               <TicketStepper ticket={ticket} />
-              {ticket.evaluation && (
-                <EvaluationCard
-                  evaluation={ticket.evaluation}
-                  categoryId={resolveCategoryId(ticket)}
-                  ticket={ticket}
-                />
+              {ticket.evaluation && <EvaluationCard evaluation={ticket.evaluation} />}
+
+              {ticket.description.trim() && (
+                <div>
+                  <h2 className="text-sm font-semibold text-zinc-900">รายละเอียด</h2>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
+                    {ticket.description}
+                  </p>
+                </div>
               )}
-              <RequestDetailsCard ticket={ticket} />
 
               <div className="grid gap-5 border-t border-zinc-100 pt-6 sm:grid-cols-2 lg:grid-cols-3">
-                <PersonField label="ผู้ยื่น" name={ticket.requesterName} tone="blue" />
-                <PersonField label="ผู้รับผิดชอบ" name={responsible} tone="amber" />
-                <PersonField label="ผู้อนุมัติ" name={approverName(ticket)} tone="none" />
+                <PersonField label="ผู้ยื่น" name={ticket.requesterName} />
+                <PersonField label="ผู้รับผิดชอบ" name={responsible} />
+                <PersonField label="ผู้อนุมัติ" name={approverName(ticket)} />
                 <div>
                   <p className="text-xs font-medium text-zinc-500">ฝ่าย</p>
                   <p className="mt-1.5 text-sm font-medium text-zinc-900">{ticket.departmentName}</p>

@@ -72,9 +72,9 @@ UI copy ภาษาไทยทั้งหมด
 | `surface` / white | sidebar, card, panel |
 | `brand` / blue-600 | logo mark, ปุ่ม primary, ลิงก์เน้น |
 | zinc-900 / zinc-500 | ข้อความหลัก / รอง |
-| semantic badges | yellow/purple/blue/green/red/gray ตามสถานะคำร้อง |
+| semantic badges | gray / yellow / blue / green / red ตามสถานะและความสำคัญเท่านั้น |
 
-อย่าเพิ่ม gradient หรือ neon accent นอก palette นี้
+อย่าใส่สีประจำแผนก — ใช้ zinc เป็นพื้นฐาน สี semantic เฉพาะ badge สถานะและ **badge บทบาท (role)**
 
 ## Typography
 

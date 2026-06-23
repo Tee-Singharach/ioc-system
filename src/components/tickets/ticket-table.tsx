@@ -66,7 +66,7 @@ export function TicketTable({ tickets, hrefPrefix = "/tickets", emptyHint }: Tic
                   <div className="flex items-center gap-2.5">
                     <div
                       aria-hidden
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600"
                     >
                       {userInitials(ticket.requesterName)}
                     </div>

@@ -59,7 +59,6 @@ export default function AdminAuditLogsContent() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={Shield}
-        iconClassName="bg-blue-100 text-blue-600"
         title="Audit Log"
         description="ประวัติการทำงานและการเข้าใช้ระบบ"
       />
@@ -102,7 +101,7 @@ export default function AdminAuditLogsContent() {
 
                   <div className="flex min-w-0 flex-1 gap-3">
                     <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-700"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-600"
                       aria-hidden
                     >
                       {userInitials(log.actorName)}
