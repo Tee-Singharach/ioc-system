@@ -18,10 +18,13 @@ import { Textarea } from "@/components/ui/textarea";
 function TicketRefBanner({
   title,
   departmentName,
+  description,
 }: {
   title: string;
   departmentName: string;
+  description?: string;
 }) {
+  const detail = description?.trim();
   return (
     <div className="flex gap-3 rounded-xl border border-zinc-200/80 bg-gradient-to-br from-zinc-50 to-white px-3.5 py-3">
       <div className="ioc-icon-box-brand h-9 w-9 shrink-0">
@@ -29,7 +32,12 @@ function TicketRefBanner({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium tracking-wide text-zinc-500 uppercase">คำร้องอ้างอิง</p>
-        <p className="mt-0.5 truncate text-sm font-semibold text-zinc-900">{title}</p>
+        <p className="mt-0.5 text-sm font-semibold text-zinc-900">{title}</p>
+        {detail && (
+          <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-zinc-600">
+            {detail}
+          </p>
+        )}
         <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs text-zinc-600 ring-1 ring-zinc-200/80">
           <Building2 className="h-3 w-3 shrink-0 text-zinc-400" aria-hidden />
           {departmentName}
@@ -130,7 +138,7 @@ function CostToggle({
             มีค่าใช้จ่าย
           </span>
           <span className="mt-0.5 block text-xs leading-snug text-zinc-500">
-            ติ๊กเมื่องานนี้ต้องขออนุมัติงบประมาณ
+            ติ๊กเมื่องานนี้มีงบ — กรอกจำนวนได้ถ้าทราบ ไม่บังคับ
           </span>
         </span>
       </button>
@@ -185,11 +193,7 @@ export function EvaluationForm({
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const cost = hasCost ? parseEstimatedCost(estimatedCost) : undefined;
-    const payload = {
-      diagnosis: diagnosis.trim(),
-      hasCost,
-      estimatedCost: cost,
-    };
+    const payload = { diagnosis: diagnosis.trim() };
     const next = validateEvaluationPayload(ticket, payload);
     if (Object.keys(next).length) {
       setErrors(next);
@@ -198,7 +202,7 @@ export function EvaluationForm({
     setErrors({});
     onSave({
       diagnosis: payload.diagnosis,
-      estimatedCost: payload.estimatedCost,
+      estimatedCost: cost,
       notes: notes.trim() || undefined,
     });
     onSaved?.();
@@ -211,7 +215,11 @@ export function EvaluationForm({
         title={showHeader ? "ผลประเมิน" : undefined}
         hint={showHeader ? "กรอกหลังตรวจสอบจริง" : undefined}
       >
-        <TicketRefBanner title={ticket.title} departmentName={ticket.departmentName} />
+        <TicketRefBanner
+          title={ticket.title}
+          departmentName={ticket.departmentName}
+          description={ticket.description}
+        />
       </FormSection>
 
       <FormSection title="ผลการตรวจสอบ" hint="สรุปผลหลังตรวจสอบจริง">
@@ -228,12 +236,10 @@ export function EvaluationForm({
         <CostToggle checked={hasCost} onChange={handleCostToggle}>
           <Input
             label="ประมาณค่าใช้จ่าย (บาท)"
-            required
             value={estimatedCost}
             onChange={(ev) => setEstimatedCost(ev.target.value)}
-            placeholder="เช่น 1,500"
+            placeholder="ไม่บังคับ — เช่น 1,500"
             inputMode="decimal"
-            error={errors.estimatedCost}
             className={FORM_FIELD_CLASS}
           />
         </CostToggle>
@@ -307,7 +313,7 @@ export function EvaluationModal({
                 บันทึกผลประเมิน
               </h2>
               <p className="mt-0.5 truncate text-xs text-zinc-500">{ticket.title}</p>
-              <p className="mt-0.5 text-xs text-zinc-400">กรอกหลังตรวจสอบจริง · {ticket.departmentName}</p>
+              <p className="mt-0.5 text-xs text-zinc-400">{ticket.departmentName}</p>
             </div>
             <button
               type="button"

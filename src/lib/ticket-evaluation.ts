@@ -18,35 +18,17 @@ export function recommendedActionLabel(
 
 export function validateEvaluationPayload(
   _ticket: Pick<Ticket, "departmentId">,
-  payload: {
-    diagnosis?: string;
-    hasCost?: boolean;
-    estimatedCost?: number;
-  },
+  payload: { diagnosis?: string },
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   if (!payload.diagnosis?.trim()) errors.diagnosis = "กรุณาระบุผลการตรวจสอบ";
-  if (payload.hasCost && payload.estimatedCost == null) {
-    errors.estimatedCost = "กรุณาระบุประมาณค่าใช้จ่าย";
-  }
   return errors;
 }
 
 export function hasCompleteEvaluation(ticket: Pick<Ticket, "evaluation">): boolean {
   const e = ticket.evaluation;
-  if (!e) return false;
-  return (
-    Object.keys(
-      validateEvaluationPayload(
-        { departmentId: "" },
-        {
-          diagnosis: e.diagnosis,
-          hasCost: e.estimatedCost != null,
-          estimatedCost: e.estimatedCost,
-        },
-      ),
-    ).length === 0
-  );
+  if (!e?.diagnosis?.trim()) return false;
+  return Object.keys(validateEvaluationPayload({ departmentId: "" }, e)).length === 0;
 }
 
 export function canEditEvaluation(ticket: Ticket): boolean {

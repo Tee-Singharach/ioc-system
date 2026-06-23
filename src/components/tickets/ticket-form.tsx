@@ -152,16 +152,15 @@ export function TicketForm({
             hint="เขียนหัวข้อสรุปสั้นๆ และอธิบายเรื่องที่ต้องการให้แผนกช่วยให้ครบถ้วน"
           >
             <Input
-              label="หัวข้อ"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               error={errors.title}
               placeholder="ระบุหัวข้อคำร้อง"
               className={FORM_FIELD_CLASS}
+              aria-label="หัวข้อ"
             />
             <Textarea
-              label="รายละเอียด"
               required
               rows={3}
               value={description}
@@ -169,6 +168,7 @@ export function TicketForm({
               error={errors.description}
               placeholder="อธิบายรายละเอียด เช่น อุปกรณ์ สถานที่ วันที่ต้องการ ฯลฯ"
               className={`min-h-20 ${FORM_FIELD_CLASS}`}
+              aria-label="รายละเอียด"
             />
           </FormSection>
 
