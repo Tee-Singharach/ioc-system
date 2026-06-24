@@ -12,34 +12,38 @@ import {
 import {
   fetchAdminDepartments,
   fetchAdminUsers,
-  fetchAuditLogs,
+  actionAdminCreateDepartment,
+  actionAdminCreateUser,
+  actionAdminSoftDeleteDepartment,
+  actionAdminSoftDeleteUser,
+  actionAdminUpdateDepartment,
+  actionAdminUpdateUserDepartment,
+  actionAdminUpdateUserRole,
 } from "@/lib/actions/data";
-import type { AuditLogEntry, ManagedDepartment, ManagedUser } from "@/lib/types/admin";
+import type { ManagedDepartment, ManagedUser } from "@/lib/types/admin";
 import type { UserRole } from "@/lib/types/ticket";
 import { useMockAuth } from "@/providers/mock-auth-provider";
-
-function newId(prefix: string) {
-  return `${prefix}-${Date.now()}`;
-}
 
 interface MockAdminContextValue {
   activeUsers: ManagedUser[];
   activeDepartments: ManagedDepartment[];
-  auditLogs: AuditLogEntry[];
-  updateUserRole: (id: string, role: UserRole) => void;
-  updateUserDepartment: (id: string, departmentId: string) => void;
-  softDeleteUser: (id: string) => void;
-  createUser: (input: Omit<ManagedUser, "id" | "deletedAt">) => string | null;
+  updateUserRole: (id: string, role: UserRole) => Promise<string | null>;
+  updateUserDepartment: (id: string, departmentId: string) => Promise<string | null>;
+  softDeleteUser: (id: string) => Promise<string | null>;
+  createUser: (
+    input: Omit<ManagedUser, "id" | "deletedAt">,
+    password: string,
+  ) => Promise<string | null>;
   createDepartment: (input: {
     slug: string;
     name: string;
     shortName: string;
-  }) => string | null;
+  }) => Promise<string | null>;
   updateDepartment: (
     id: string,
     input: { name: string; shortName: string },
-  ) => string | null;
-  softDeleteDepartment: (id: string) => string | null;
+  ) => Promise<string | null>;
+  softDeleteDepartment: (id: string) => Promise<string | null>;
 }
 
 const MockAdminContext = createContext<MockAdminContextValue | null>(null);
@@ -48,169 +52,117 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
   const { user: actor } = useMockAuth();
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [departments, setDepartments] = useState<ManagedDepartment[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+
+  const reload = useCallback(async () => {
+    const [u, d] = await Promise.all([fetchAdminUsers(), fetchAdminDepartments()]);
+    setUsers(u);
+    setDepartments(d);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchAdminUsers(), fetchAdminDepartments(), fetchAuditLogs()]).then(
-      ([u, d, logs]) => {
-        if (cancelled) return;
-        setUsers(u);
-        setDepartments(d);
-        setAuditLogs(logs);
-      },
-    );
+    reload().then(() => {
+      if (cancelled) return;
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const appendLog = useCallback(
-    (action: string, target: string, detail?: string) => {
-      if (!actor) return;
-      const entry: AuditLogEntry = {
-        id: newId("log"),
-        action,
-        target,
-        actorId: actor.id,
-        actorName: actor.name,
-        at: new Date().toISOString(),
-        detail,
-      };
-      setAuditLogs((prev) => [entry, ...prev]);
-    },
-    [actor],
-  );
+  }, [reload]);
 
   const activeUsers = useMemo(() => users.filter((u) => !u.deletedAt), [users]);
   const activeDepartments = useMemo(() => departments.filter((d) => !d.deletedAt), [departments]);
 
   const updateUserRole = useCallback(
-    (id: string, role: UserRole) => {
-      const target = users.find((u) => u.id === id);
-      if (!target || target.deletedAt) return;
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
-      appendLog("อัปเดตสิทธิ์", target.username, `เปลี่ยนสิทธิ์เป็น ${role}`);
+    async (id: string, role: UserRole) => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminUpdateUserRole(actor, id, role);
+      if (!result.ok) return result.error;
+      await reload();
+      return null;
     },
-    [users, appendLog],
+    [actor, reload],
   );
 
   const updateUserDepartment = useCallback(
-    (id: string, departmentId: string) => {
-      const target = users.find((u) => u.id === id);
-      if (!target || target.deletedAt) return;
-      const dept = departments.find((d) => d.id === departmentId && !d.deletedAt);
-      if (!dept) return;
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, departmentId } : u)));
-      appendLog("อัปเดตแผนก", target.username, `ย้ายไปแผนก ${dept.name}`);
+    async (id: string, departmentId: string) => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminUpdateUserDepartment(actor, id, departmentId);
+      if (!result.ok) return result.error;
+      await reload();
+      return null;
     },
-    [users, departments, appendLog],
+    [actor, reload],
   );
 
   const softDeleteUser = useCallback(
-    (id: string) => {
-      const target = users.find((u) => u.id === id);
-      if (!target || target.deletedAt || target.role === "admin") return;
-      const at = new Date().toISOString();
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, deletedAt: at } : u)));
-      appendLog("ลบผู้ใช้", target.username, `ลบผู้ใช้ ${target.name}`);
+    async (id: string) => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminSoftDeleteUser(actor, id);
+      if (!result.ok) return result.error;
+      await reload();
+      return null;
     },
-    [users, appendLog],
+    [actor, reload],
   );
 
   const createUser = useCallback(
-    (input: Omit<ManagedUser, "id" | "deletedAt">): string | null => {
-      const username = input.username.trim().toLowerCase();
-      if (!username || !input.name.trim()) return "กรุณากรอกชื่อผู้ใช้และชื่อ-นามสกุล";
-      if (users.some((u) => u.username === username && !u.deletedAt)) {
-        return "ชื่อผู้ใช้นี้มีอยู่แล้ว";
-      }
-      if (!departments.some((d) => d.id === input.departmentId && !d.deletedAt)) {
-        return "แผนกไม่ถูกต้อง";
-      }
-      const id = newId("user");
-      setUsers((prev) => [...prev, { ...input, id, username }]);
-      appendLog("สร้างผู้ใช้", username, `สิทธิ์ ${input.role}`);
+    async (
+      input: Omit<ManagedUser, "id" | "deletedAt">,
+      password: string,
+    ): Promise<string | null> => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminCreateUser(actor, input, password);
+      if (!result.ok) return result.error;
+      await reload();
       return null;
     },
-    [users, departments, appendLog],
+    [actor, reload],
   );
 
   const createDepartment = useCallback(
-    (input: {
+    async (input: {
       slug: string;
       name: string;
       shortName: string;
-    }): string | null => {
-      const name = input.name.trim();
-      const shortName = input.shortName.trim();
-      const slug = input.slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
-      if (!slug) return "กรุณาระบุรหัสแผนก";
-      if (!name) return "กรุณาระบุชื่อแผนก";
-      if (!shortName) return "กรุณาระบุชื่อย่อ";
-      const id = slug.startsWith("dept-") ? slug : `dept-${slug}`;
-      if (departments.some((d) => d.id === id && !d.deletedAt)) {
-        return "รหัสแผนกนี้มีอยู่แล้ว";
-      }
-      if (departments.some((d) => d.name === name && !d.deletedAt)) {
-        return "ชื่อแผนกนี้มีอยู่แล้ว";
-      }
-      setDepartments((prev) => [
-        ...prev,
-        { id, name, shortName },
-      ]);
-      appendLog("สร้างแผนก", id, `ชื่อแผนก: ${name}`);
+    }): Promise<string | null> => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminCreateDepartment(actor, input);
+      if (!result.ok) return result.error;
+      await reload();
       return null;
     },
-    [departments, appendLog],
+    [actor, reload],
   );
 
   const updateDepartment = useCallback(
-    (
+    async (
       id: string,
       input: { name: string; shortName: string },
-    ): string | null => {
-      const name = input.name.trim();
-      const shortName = input.shortName.trim();
-      const target = departments.find((d) => d.id === id);
-      if (!target || target.deletedAt) return "ไม่พบแผนก";
-      if (!name) return "กรุณาระบุชื่อแผนก";
-      if (!shortName) return "กรุณาระบุชื่อย่อ";
-      if (departments.some((d) => d.id !== id && d.name === name && !d.deletedAt)) {
-        return "ชื่อแผนกนี้มีอยู่แล้ว";
-      }
-      setDepartments((prev) =>
-        prev.map((d) =>
-          d.id === id
-            ? { ...d, name, shortName }
-            : d,
-        ),
-      );
-      appendLog("แก้ไขแผนก", target.id, `อัปเดต ${name}`);
+    ): Promise<string | null> => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminUpdateDepartment(actor, id, input);
+      if (!result.ok) return result.error;
+      await reload();
       return null;
     },
-    [departments, appendLog],
+    [actor, reload],
   );
 
   const softDeleteDepartment = useCallback(
-    (id: string): string | null => {
-      const target = departments.find((d) => d.id === id);
-      if (!target || target.deletedAt) return null;
-      const activeCount = users.filter((u) => !u.deletedAt && u.departmentId === id).length;
-      if (activeCount > 0) return `มีผู้ใช้ ${activeCount} คนในแผนกนี้ — ย้ายผู้ใช้ก่อนลบ`;
-      const at = new Date().toISOString();
-      setDepartments((prev) => prev.map((d) => (d.id === id ? { ...d, deletedAt: at } : d)));
-      appendLog("ลบแผนก", target.id, `ลบแผนก ${target.name}`);
+    async (id: string): Promise<string | null> => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminSoftDeleteDepartment(actor, id);
+      if (!result.ok) return result.error;
+      await reload();
       return null;
     },
-    [departments, users, appendLog],
+    [actor, reload],
   );
 
   const value = useMemo(
     () => ({
       activeUsers,
       activeDepartments,
-      auditLogs,
       updateUserRole,
       updateUserDepartment,
       softDeleteUser,
@@ -222,7 +174,6 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
     [
       activeUsers,
       activeDepartments,
-      auditLogs,
       updateUserRole,
       updateUserDepartment,
       softDeleteUser,

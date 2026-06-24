@@ -42,3 +42,17 @@ export function formatDateTime(iso: string) {
     minute: "2-digit",
   });
 }
+
+export const HANDOFF_PROGRESS_PREFIX = "ส่งมอบแล้ว — ";
+
+export function handoffProgressContent(summary: string) {
+  return `${HANDOFF_PROGRESS_PREFIX}${summary.trim()}`;
+}
+
+export function isHandoffProgressNote(content: string) {
+  return content.startsWith(HANDOFF_PROGRESS_PREFIX);
+}
+
+export function handoffProgressReason(content: string) {
+  return isHandoffProgressNote(content) ? content.slice(HANDOFF_PROGRESS_PREFIX.length) : content;
+}

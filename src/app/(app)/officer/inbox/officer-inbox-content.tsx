@@ -39,7 +39,7 @@ function InboxEmpty({ tab }: { tab: InboxTab }) {
       ) : (
         <>
           <p className="mt-5 text-sm font-medium text-zinc-700">ไม่มีงานที่กำลังดำเนินการ</p>
-          <p className="mt-1 text-sm text-zinc-500">งานที่ผู้จัดการอนุมัติแล้วจะแสดงที่นี่</p>
+          <p className="mt-1 text-sm text-zinc-500">งานที่คุณรับผิดชอบและได้รับอนุมัติแล้วจะแสดงที่นี่</p>
         </>
       )}
     </div>

@@ -16,18 +16,12 @@ export function getInboxPendingTickets(
 
 function isOfficerMyTask(
   t: Ticket,
-  officer: Pick<User, "id" | "departmentId">,
+  officer: Pick<User, "id">,
 ): boolean {
   if (TERMINAL_STATUSES.includes(t.status)) return false;
-
-  const mine = t.assigneeId === officer.id || t.receivedById === officer.id;
-  if (mine) {
-    if (t.status === "รอรับเรื่อง" && !t.receivedById) return false;
-    return true;
-  }
-
-  // ponytail: งานกำลังดำเนินการในแผนก — ให้เจ้าหน้าที่เห็นตัวอย่าง workflow (ดำเนินการได้เฉพาะงานที่รับ/มอบหมาย)
-  return t.status === "กำลังดำเนินการ" && t.departmentId === officer.departmentId;
+  if (t.assigneeId !== officer.id && t.receivedById !== officer.id) return false;
+  if (t.status === "รอรับเรื่อง" && !t.receivedById) return false;
+  return true;
 }
 
 export function getOfficerMyTasks(
@@ -45,7 +39,7 @@ export function getOfficerAssignedTasks(
   return getOfficerMyTasks(tickets, officer).filter((t) => t.status !== "กำลังดำเนินการ");
 }
 
-/** แท็บดำเนินการ — กำลังดำเนินการในงานของฉันหรือในแผนก */
+/** แท็บดำเนินการ — กำลังดำเนินการที่รับหรือได้รับมอบหมาย */
 export function getOfficerInProgressTasks(
   tickets: Ticket[],
   officer: Pick<User, "id" | "departmentId">,
@@ -109,7 +103,7 @@ if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
     throw new Error("officer-access: assigned vs in-progress split");
   }
   const peer = getOfficerInProgressTasks(sample, { id: "officer-002", departmentId: "dept-it" });
-  if (!peer.some((t) => t.id === "a")) {
-    throw new Error("officer-access: dept in-progress tasks should appear in in-progress tab");
+  if (peer.length !== 0) {
+    throw new Error("officer-access: in-progress tab is own tasks only");
   }
 }

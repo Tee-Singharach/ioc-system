@@ -90,6 +90,12 @@ export interface Ticket {
 
 export const PRIORITIES: Priority[] = ["ต่ำ", "ปานกลาง", "สูง", "เร่งด่วน"];
 
+export interface TicketAttachmentUpload {
+  name: string;
+  size: number;
+  dataBase64: string;
+}
+
 export interface TicketFormData {
   title: string;
   description: string;
@@ -98,4 +104,8 @@ export interface TicketFormData {
   scheduledStartAt: string;
   scheduledEndAt: string;
   attachmentNames: string[];
+  /** ไฟล์ใหม่ที่เลือกจากเครื่อง — ส่ง base64 ไปบันทึกฝั่ง server */
+  attachmentUploads?: TicketAttachmentUpload[];
+  /** ไฟล์เดิมที่ยังคงไว้ตอนแก้ไขคำร้อง */
+  keptAttachmentIds?: string[];
 }

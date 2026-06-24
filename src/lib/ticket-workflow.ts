@@ -94,6 +94,18 @@ export function workflowStepIndex(
   if (status === "กำลังดำเนินการ") return 3;
   if (status === "รออนุมัติ") return 2;
   if (status === "รอรับเรื่อง") return receivedById ? 1 : 0;
+  if (status === "ปฏิเสธ") {
+    const rejectAt = statusHistory.findIndex((h) => h.status === "ปฏิเสธ");
+    if (rejectAt > 0) {
+      let max = 0;
+      for (let i = 0; i < rejectAt; i++) {
+        const iStep = historyStepIndex(statusHistory[i]);
+        if (iStep > max) max = iStep;
+      }
+      return max;
+    }
+    return 2;
+  }
   if (TERMINAL.includes(status)) {
     let max = 0;
     for (const h of statusHistory) {
@@ -143,7 +155,7 @@ export type WorkflowTimelineStep = {
   label: string;
   at: string | null;
   note?: string;
-  state: "done" | "current" | "upcoming";
+  state: "done" | "current" | "upcoming" | "rejected";
 };
 
 export type WorkflowTimeline = {
@@ -196,6 +208,7 @@ export function buildWorkflowTimeline(
     if (allDone) state = "done";
     else if (isTerminal) {
       if (index < currentIdx) state = "done";
+      else if (index === currentIdx && status === "ปฏิเสธ") state = "rejected";
       else if (index === currentIdx) state = "current";
       else state = "upcoming";
     } else if (index < currentIdx) state = "done";
@@ -271,5 +284,17 @@ if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
   }
   if (rejectionRejectorFromNote("วราภรณ์ ผู้จัดการ ปฏิเสธ: เต็ม") !== "วราภรณ์ ผู้จัดการ") {
     throw new Error("ticket-workflow: rejection rejector");
+  }
+  const rejectedTl = buildWorkflowTimeline({
+    status: "ปฏิเสธ",
+    receivedById: "officer-001",
+    createdAt: "2026-06-17T08:00:00Z",
+    statusHistory: [
+      ...sampleHistory,
+      { status: "ปฏิเสธ", note: "ผู้จัดการ ปฏิเสธ: test", at: "2026-06-19T08:00:00Z" },
+    ],
+  });
+  if (rejectedTl.steps[2]?.state !== "rejected") {
+    throw new Error("ticket-workflow: rejected at pending approval step");
   }
 }

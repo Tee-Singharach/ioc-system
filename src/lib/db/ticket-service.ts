@@ -6,10 +6,21 @@ import { canResubmit } from "@/lib/ticket-rules";
 import { priorityFromApp, statusFromApp } from "@/lib/db/maps";
 import { mapTicket, ticketInclude } from "@/lib/db/ticket-mapper";
 import { nextTicketNo } from "@/lib/ticket-number";
+import { saveUploadBatch } from "@/lib/storage/save-upload";
+import { writeAuditLog } from "@/lib/db/audit-log";
+import { handoffProgressContent } from "@/lib/ticket-progress";
 
 async function loadTicket(id: string) {
   const row = await prisma.ticket.findUnique({ where: { id }, include: ticketInclude });
   return row ? mapTicket(row) : undefined;
+}
+
+async function auditTicket(actorId: string, action: string, ticketId: string, detail?: string) {
+  const row = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { ticketNo: true },
+  });
+  await writeAuditLog(actorId, action, row?.ticketNo ?? ticketId, detail);
 }
 
 export async function listAllTickets() {
@@ -22,6 +33,7 @@ export async function listAllTickets() {
 
 export async function createTicket(user: User, data: TicketFormData) {
   const now = new Date();
+  const saved = data.attachmentUploads?.length ? await saveUploadBatch(data.attachmentUploads) : [];
   const ticket = await prisma.ticket.create({
     data: {
       ticketNo: await nextTicketNo(user.departmentId, now),
@@ -34,7 +46,9 @@ export async function createTicket(user: User, data: TicketFormData) {
       scheduledStartAt: new Date(data.scheduledStartAt),
       scheduledEndAt: new Date(data.scheduledEndAt),
       attachments: {
-        create: data.attachmentNames.map((name) => ({ name, size: 0 })),
+        create: saved.length
+          ? saved.map((s) => ({ name: s.name, size: s.size, url: s.url }))
+          : data.attachmentNames.map((name) => ({ name, size: 0 })),
       },
       statusHistory: {
         create: { status: "WAITING_ACK", at: now },
@@ -42,28 +56,47 @@ export async function createTicket(user: User, data: TicketFormData) {
     },
     include: ticketInclude,
   });
-  return mapTicket(ticket);
+  const mapped = mapTicket(ticket);
+  await writeAuditLog(user.id, "สร้างคำร้อง", mapped.ticketNo, mapped.title);
+  return mapped;
 }
 
-export async function updateTicket(id: string, data: TicketFormData) {
-  await prisma.$transaction([
-    prisma.ticketAttachment.deleteMany({ where: { ticketId: id } }),
-    prisma.ticket.update({
-      where: { id },
-      data: {
-        title: data.title.trim(),
-        description: data.description.trim(),
-        priority: priorityFromApp[data.priority],
-        departmentId: data.departmentId,
-        scheduledStartAt: new Date(data.scheduledStartAt),
-        scheduledEndAt: new Date(data.scheduledEndAt),
-        attachments: {
-          create: data.attachmentNames.map((name) => ({ name, size: 0 })),
-        },
-      },
-    }),
-  ]);
-  return loadTicket(id);
+export async function updateTicket(id: string, user: User, data: TicketFormData) {
+  const saved = data.attachmentUploads?.length ? await saveUploadBatch(data.attachmentUploads) : [];
+  const attachmentChanged =
+    data.keptAttachmentIds !== undefined || (data.attachmentUploads?.length ?? 0) > 0;
+
+  if (attachmentChanged) {
+    const keptIds = data.keptAttachmentIds ?? [];
+    await prisma.ticketAttachment.deleteMany({
+      where: { ticketId: id, id: { notIn: keptIds } },
+    });
+    if (saved.length) {
+      await prisma.ticketAttachment.createMany({
+        data: saved.map((s) => ({
+          ticketId: id,
+          name: s.name,
+          size: s.size,
+          url: s.url,
+        })),
+      });
+    }
+  }
+
+  await prisma.ticket.update({
+    where: { id },
+    data: {
+      title: data.title.trim(),
+      description: data.description.trim(),
+      priority: priorityFromApp[data.priority],
+      departmentId: data.departmentId,
+      scheduledStartAt: new Date(data.scheduledStartAt),
+      scheduledEndAt: new Date(data.scheduledEndAt),
+    },
+  });
+  const ticket = await loadTicket(id);
+  if (ticket) await auditTicket(user.id, "แก้ไขคำร้อง", id, ticket.title);
+  return ticket;
 }
 
 async function appendStatus(id: string, status: TicketStatus, note?: string) {
@@ -78,16 +111,26 @@ async function appendStatus(id: string, status: TicketStatus, note?: string) {
   });
 }
 
-export async function cancelTicket(id: string) {
+export async function cancelTicket(id: string, user: User) {
   await appendStatus(id, "ยกเลิก", "ยกเลิกโดยผู้แจ้ง");
-  return loadTicket(id);
+  const ticket = await loadTicket(id);
+  if (ticket) await auditTicket(user.id, "ยกเลิกคำร้อง", id);
+  return ticket;
 }
 
-export async function resubmitTicket(id: string, data: TicketFormData) {
+export async function resubmitTicket(id: string, user: User, data: TicketFormData) {
   const existing = await loadTicket(id);
   if (!existing || !canResubmit(existing)) return existing;
 
   const now = new Date();
+  const keptRows = await prisma.ticketAttachment.findMany({
+    where: { ticketId: id, id: { in: data.keptAttachmentIds ?? [] } },
+  });
+  const saved = data.attachmentUploads?.length ? await saveUploadBatch(data.attachmentUploads) : [];
+  const attachmentCreates = [
+    ...keptRows.map((r) => ({ name: r.name, size: r.size, url: r.url })),
+    ...saved.map((s) => ({ name: s.name, size: s.size, url: s.url })),
+  ];
   await prisma.$transaction([
     prisma.ticketEvaluation.deleteMany({ where: { ticketId: id } }),
     prisma.ticketAttachment.deleteMany({ where: { ticketId: id } }),
@@ -104,7 +147,9 @@ export async function resubmitTicket(id: string, data: TicketFormData) {
         receivedById: null,
         assigneeId: null,
         attachments: {
-          create: data.attachmentNames.map((name) => ({ name, size: 0 })),
+          create: attachmentCreates.length
+            ? attachmentCreates
+            : data.attachmentNames.map((name) => ({ name, size: 0 })),
         },
         statusHistory: {
           create: {
@@ -117,7 +162,9 @@ export async function resubmitTicket(id: string, data: TicketFormData) {
       },
     }),
   ]);
-  return loadTicket(id);
+  const ticket = await loadTicket(id);
+  if (ticket) await auditTicket(user.id, "ส่งคำร้องใหม่", id, "หลังถูกปฏิเสธ");
+  return ticket;
 }
 
 export async function receiveTicket(id: string, user: User) {
@@ -132,7 +179,9 @@ export async function receiveTicket(id: string, user: User) {
       updatedAt: now,
     },
   });
-  return loadTicket(id);
+  const ticket = await loadTicket(id);
+  if (ticket) await auditTicket(user.id, "รับเรื่อง", id);
+  return ticket;
 }
 
 export async function saveEvaluation(
@@ -160,7 +209,11 @@ export async function saveEvaluation(
     },
   });
   await prisma.ticket.update({ where: { id }, data: { updatedAt: now } });
-  return loadTicket(id);
+  const ticket = await loadTicket(id);
+  if (ticket) {
+    await auditTicket(user.id, "บันทึกผลประเมิน", id, data.diagnosis.slice(0, 120));
+  }
+  return ticket;
 }
 
 export async function submitForApproval(id: string, user: User) {
@@ -169,14 +222,18 @@ export async function submitForApproval(id: string, user: User) {
     return ticket;
   }
   await appendStatus(id, "รออนุมัติ", `${user.name} ส่งเรื่องขออนุมัติ`);
-  return loadTicket(id);
+  const updated = await loadTicket(id);
+  if (updated) await auditTicket(user.id, "ส่งขออนุมัติ", id);
+  return updated;
 }
 
 export async function approveTicket(id: string, user: User) {
   const ticket = await loadTicket(id);
   if (!ticket || ticket.status !== "รออนุมัติ") return ticket;
   await appendStatus(id, "กำลังดำเนินการ", approvalNote(user.name));
-  return loadTicket(id);
+  const updated = await loadTicket(id);
+  if (updated) await auditTicket(user.id, "อนุมัติคำร้อง", id);
+  return updated;
 }
 
 export async function rejectTicket(id: string, user: User, reason: string) {
@@ -198,26 +255,42 @@ export async function rejectTicket(id: string, user: User, reason: string) {
       data: {
         ticketId: id,
         authorId: user.id,
-        content: trimmed,
+        content: `ปฏิเสธคำร้อง — เหตุผล: ${trimmed}`,
       },
     }),
   ]);
-  return loadTicket(id);
+  const ticket = await loadTicket(id);
+  if (ticket) await auditTicket(user.id, "ปฏิเสธคำร้อง", id, trimmed);
+  return ticket;
 }
 
 export async function completeTicket(id: string, user: User, summary?: string) {
   const trimmed = summary?.trim();
-  const note = trimmed
-    ? `${user.name} ส่งมอบ/ปิดงาน: ${trimmed}`
-    : `${user.name} ส่งมอบ/ปิดงาน`;
-  await prisma.ticket.update({
-    where: { id, status: "IN_PROGRESS" },
-    data: {
-      status: "COMPLETED",
-      statusHistory: { create: { status: "COMPLETED", note, at: new Date() } },
-    },
-  });
-  return loadTicket(id);
+  if (!trimmed) return loadTicket(id);
+
+  const now = new Date();
+  const note = `${user.name} ส่งมอบ/ปิดงาน: ${trimmed}`;
+  await prisma.$transaction([
+    prisma.ticket.update({
+      where: { id, status: "IN_PROGRESS" },
+      data: {
+        status: "COMPLETED",
+        statusHistory: { create: { status: "COMPLETED", note, at: now } },
+        updatedAt: now,
+      },
+    }),
+    prisma.progressNote.create({
+      data: {
+        ticketId: id,
+        authorId: user.id,
+        content: handoffProgressContent(trimmed),
+        createdAt: now,
+      },
+    }),
+  ]);
+  const ticket = await loadTicket(id);
+  if (ticket) await auditTicket(user.id, "ปิดงาน", id, trimmed);
+  return ticket;
 }
 
 export async function addProgressNote(id: string, user: User, content: string) {
@@ -230,27 +303,31 @@ export async function addProgressNote(id: string, user: User, content: string) {
     }),
     prisma.ticket.update({ where: { id, status: "IN_PROGRESS" }, data: { updatedAt: now } }),
   ]);
-  return loadTicket(id);
+  const ticket = await loadTicket(id);
+  if (ticket) await auditTicket(user.id, "บันทึกความคืบหน้า", id, trimmed.slice(0, 120));
+  return ticket;
 }
 
-export async function assignTicket(id: string, officerId: string) {
+export async function assignTicket(id: string, actor: User, officerId: string) {
   const officer = await prisma.user.findUnique({ where: { id: officerId } });
   if (!officer) return loadTicket(id);
   const now = new Date();
   const note = `มอบหมายให้ ${officer.name}`;
-  const ticket = await prisma.ticket.findUnique({ where: { id } });
-  if (!ticket) return undefined;
+  const row = await prisma.ticket.findUnique({ where: { id } });
+  if (!row) return undefined;
   await prisma.ticket.update({
     where: { id },
     data: {
       assigneeId: officer.id,
       statusHistory: {
-        create: { status: ticket.status, note, at: now },
+        create: { status: row.status, note, at: now },
       },
       updatedAt: now,
     },
   });
-  return loadTicket(id);
+  const ticket = await loadTicket(id);
+  if (ticket) await auditTicket(actor.id, "มอบหมายงาน", id, `มอบหมายให้ ${officer.name}`);
+  return ticket;
 }
 
 export async function addComment(
@@ -269,7 +346,11 @@ export async function addComment(
   });
   void attachmentNames;
   await prisma.ticket.update({ where: { id: ticketId }, data: { updatedAt: now } });
-  return loadTicket(ticketId);
+  const ticket = await loadTicket(ticketId);
+  if (ticket) {
+    await auditTicket(user.id, "เพิ่มความคิดเห็น", ticketId, content.slice(0, 120));
+  }
+  return ticket;
 }
 
 export async function updateComment(ticketId: string, user: User, commentId: string, content: string) {
@@ -277,14 +358,18 @@ export async function updateComment(ticketId: string, user: User, commentId: str
     where: { id: commentId, ticketId, authorId: user.id },
     data: { content, updatedAt: new Date() },
   });
-  return loadTicket(ticketId);
+  const ticket = await loadTicket(ticketId);
+  if (ticket) await auditTicket(user.id, "แก้ไขความคิดเห็น", ticketId);
+  return ticket;
 }
 
 export async function deleteComment(ticketId: string, user: User, commentId: string) {
   await prisma.ticketComment.deleteMany({
     where: { id: commentId, ticketId, authorId: user.id },
   });
-  return loadTicket(ticketId);
+  const ticket = await loadTicket(ticketId);
+  if (ticket) await auditTicket(user.id, "ลบความคิดเห็น", ticketId);
+  return ticket;
 }
 
 export async function listDepartments() {
@@ -333,33 +418,4 @@ function mapUserFromRow(row: {
     role: row.role,
     departmentId: row.departmentId,
   } satisfies User;
-}
-
-export async function listManagedUsers() {
-  return prisma.user.findMany({
-    orderBy: { name: "asc" },
-    select: {
-      id: true,
-      username: true,
-      name: true,
-      role: true,
-      departmentId: true,
-      deletedAt: true,
-    },
-  });
-}
-
-export async function listManagedDepartments() {
-  return prisma.department.findMany({
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, shortName: true, deletedAt: true },
-  });
-}
-
-export async function listAuditLogs() {
-  return prisma.auditLog.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { actor: true },
-    take: 100,
-  });
 }

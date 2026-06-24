@@ -13,33 +13,29 @@ export const ROLE_TAB_LABELS: Record<UserRole | "all", string> = {
 
 export const ROLE_STAT_META: Record<
   UserRole,
-  { title: string; description: string; accent: string; countBg: string; iconBg: string }
+  { title: string; description: string; countBg: string; iconBg: string }
 > = {
   staff: {
     title: "พนักงาน",
     description: "สร้างและติดตามคำร้องของตน",
-    accent: "border-l-blue-500",
     countBg: "bg-blue-50 text-blue-700",
     iconBg: "bg-blue-100 text-blue-600",
   },
   officer: {
     title: "เจ้าหน้าที่",
     description: "รับงาน อัปเดตความคืบหน้า",
-    accent: "border-l-amber-400",
     countBg: "bg-amber-50 text-amber-700",
     iconBg: "bg-amber-100 text-amber-600",
   },
   manager: {
     title: "หัวหน้างาน",
     description: "อนุมัติคำร้อง ดู Dashboard",
-    accent: "border-l-violet-500",
     countBg: "bg-violet-50 text-violet-700",
     iconBg: "bg-violet-100 text-violet-600",
   },
   admin: {
     title: "ผู้ดูแลระบบ",
     description: "จัดการผู้ใช้ ตำแหน่ง และ Audit log",
-    accent: "border-l-rose-500",
     countBg: "bg-rose-50 text-rose-700",
     iconBg: "bg-rose-100 text-rose-600",
   },
@@ -63,7 +59,9 @@ export function mockUserEmail(usernameOrId: string) {
 
 export function auditCategory(log: AuditLogEntry): Exclude<AuditCategory, "all"> {
   const text = `${log.action} ${log.detail ?? ""}`;
-  if (/คำร้อง|สถานะ|มอบหมาย|รับงาน|อนุมัติ|ปฏิเสธ|workflow/i.test(text)) return "workflow";
+  if (/คำร้อง|สถานะ|มอบหมาย|รับเรื่อง|อนุมัติ|ปฏิเสธ|ปิดงาน|ความคิดเห็น|ความคืบหน้า|ประเมิน/i.test(text)) {
+    return "workflow";
+  }
   if (/ผู้ใช้|สิทธิ์|แผนก|ลบผู้ใช้|ลบแผนก|role|user/i.test(text)) return "user";
   if (/ล็อกอิน|login|security|session|รหัสผ่าน/i.test(text)) return "security";
   return "system";

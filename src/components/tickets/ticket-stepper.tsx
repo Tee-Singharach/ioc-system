@@ -54,21 +54,34 @@ export function TicketStepper({
             {TICKET_WORKFLOW_STEPS.map((step, index) => {
               const tl = steps[index];
               const done = tl.state === "done";
+              const rejectedHere = tl.state === "rejected";
               const active = tl.state === "current" && !isTerminal;
 
               return (
                 <li key={step.id} className="relative z-10 flex min-w-0 flex-col items-center px-0.5">
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                      done
-                        ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
-                        : active
-                          ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25 ring-4 ring-blue-100"
-                          : "border-2 border-zinc-200 bg-white text-zinc-400"
+                      rejectedHere
+                        ? "bg-red-600 text-white shadow-sm shadow-red-600/20 ring-4 ring-red-100"
+                        : done
+                          ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
+                          : active
+                            ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25 ring-4 ring-blue-100"
+                            : "border-2 border-zinc-200 bg-white text-zinc-400"
                     }`}
-                    aria-current={active ? "step" : undefined}
+                    aria-current={active || rejectedHere ? "step" : undefined}
                   >
-                    {done ? (
+                    {rejectedHere ? (
+                      <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden>
+                        <path
+                          d="M3 3l6 6M9 3L3 9"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    ) : done ? (
                       <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden>
                         <path
                           d="M2 6l2.5 2.5L10 3"
@@ -85,19 +98,30 @@ export function TicketStepper({
                   </div>
                   <p
                     className={`mt-2 w-full text-center text-[10px] leading-snug font-medium sm:text-xs ${
-                      done || active ? "text-zinc-900" : "text-zinc-400"
+                      rejectedHere
+                        ? "text-red-700"
+                        : done || active
+                          ? "text-zinc-900"
+                          : "text-zinc-400"
                     }`}
                   >
                     {step.label}
                   </p>
+                  {rejectedHere && (
+                    <p className="mt-0.5 text-center text-[10px] font-semibold text-red-600 sm:text-xs">
+                      ปฏิเสธ
+                    </p>
+                  )}
                   <p
                     className={`mt-0.5 w-full text-center text-[10px] tabular-nums sm:text-xs ${
                       tl.at
-                        ? active
-                          ? "font-medium text-blue-600"
-                          : done
-                            ? "text-zinc-500"
-                            : "text-zinc-400"
+                        ? rejectedHere
+                          ? "font-medium text-red-600"
+                          : active
+                            ? "font-medium text-blue-600"
+                            : done
+                              ? "text-zinc-500"
+                              : "text-zinc-400"
                         : "text-zinc-300"
                     }`}
                   >

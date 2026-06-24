@@ -238,10 +238,10 @@ export default function StaffTicketDetailPage({ params }: { params: Promise<{ id
             departmentId: ticket.departmentId,
             scheduledStartAt: ticket.scheduledStartAt,
             scheduledEndAt: ticket.scheduledEndAt,
-            attachmentNames: ticket.attachments.map((a) => a.name),
           }}
+          initialAttachments={ticket.attachments}
           submitLabel={mode === "resubmit" ? "ส่งคำร้องใหม่" : "บันทึกการแก้ไข"}
-          onSubmit={(data) => {
+          onSubmit={async (data) => {
             if (mode === "resubmit") resubmitTicket(ticket.id, data);
             else updateTicket(ticket.id, data);
             setMode("view");

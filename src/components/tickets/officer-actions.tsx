@@ -204,7 +204,7 @@ export function OfficerActions({
         onConfirm={() => {
           const trimmed = completeSummary.trim();
           if (!trimmed) {
-            setCompleteError("กรุณาระบุสรุปการส่งมอบ");
+            setCompleteError("กรุณาระบุเหตุผลการส่งมอบ");
             return;
           }
           onComplete(trimmed);
@@ -219,7 +219,7 @@ export function OfficerActions({
         }}
       >
         <Textarea
-          label="สรุปการส่งมอบ"
+          label="เหตุผลการส่งมอบ"
           value={completeSummary}
           onChange={(e) => {
             setCompleteSummary(e.target.value);

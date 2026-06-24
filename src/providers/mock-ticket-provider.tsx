@@ -95,23 +95,26 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
 
   const updateTicket = useCallback(
     (id: string, data: TicketFormData) => {
-      void actionUpdateTicket(id, data).then(patchTicket);
+      if (!user) return;
+      void actionUpdateTicket(id, user, data).then(patchTicket);
     },
-    [patchTicket],
+    [user, patchTicket],
   );
 
   const cancelTicket = useCallback(
     (id: string) => {
-      void actionCancelTicket(id).then(patchTicket);
+      if (!user) return;
+      void actionCancelTicket(id, user).then(patchTicket);
     },
-    [patchTicket],
+    [user, patchTicket],
   );
 
   const resubmitTicket = useCallback(
     (id: string, data: TicketFormData) => {
-      void actionResubmitTicket(id, data).then(patchTicket);
+      if (!user) return;
+      void actionResubmitTicket(id, user, data).then(patchTicket);
     },
-    [patchTicket],
+    [user, patchTicket],
   );
 
   const receiveTicket = useCallback(
@@ -159,9 +162,10 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
 
   const assignTicket = useCallback(
     (id: string, officerId: string) => {
-      void actionAssignTicket(id, officerId).then(patchTicket);
+      if (!user) return;
+      void actionAssignTicket(id, user, officerId).then(patchTicket);
     },
-    [patchTicket],
+    [user, patchTicket],
   );
 
   const addComment = useCallback(

@@ -15,6 +15,90 @@ const DEMO_PASSWORD = "password123";
 
 const d = (iso: string) => new Date(iso);
 
+function auditFromHistoryNote(note: string): { action: string; detail?: string } {
+  if (note.includes("รับเรื่องเพื่อตรวจสอบ")) return { action: "รับเรื่อง" };
+  if (note.includes("ส่งเรื่องขออนุมัติ")) return { action: "ส่งขออนุมัติ" };
+  if (note.includes("อนุมัติให้ดำเนินการ")) return { action: "อนุมัติคำร้อง" };
+  if (note.includes("ปฏิเสธ:")) return { action: "ปฏิเสธคำร้อง", detail: note.split("ปฏิเสธ:")[1]?.trim() };
+  if (note.includes("ส่งมอบ/ปิดงาน")) {
+    const detail = note.includes(":") ? note.split(":").slice(1).join(":").trim() : undefined;
+    return { action: "ปิดงาน", detail };
+  }
+  if (note.includes("มอบหมายให้")) return { action: "มอบหมายงาน", detail: note };
+  if (note.includes("ส่งคำร้องใหม่")) return { action: "ส่งคำร้องใหม่", detail: "หลังถูกปฏิเสธ" };
+  if (note.includes("ยกเลิกโดยผู้แจ้ง")) return { action: "ยกเลิกคำร้อง" };
+  return { action: "เปลี่ยนสถานะ", detail: note };
+}
+
+function actorIdFromNote(note: string, byName: Map<string, string>): string {
+  const prefix = note.split(" ")[0] ?? "";
+  return byName.get(prefix) ?? "admin-001";
+}
+
+async function seedAuditLogsFromTickets() {
+  const users = await prisma.user.findMany({ select: { id: true, name: true } });
+  const byName = new Map(users.map((u) => [u.name.split(" ")[0]!, u.id]));
+
+  const entries: {
+    action: string;
+    target: string;
+    actorId: string;
+    detail?: string;
+    createdAt: Date;
+  }[] = [];
+
+  const tickets = await prisma.ticket.findMany({
+    select: { ticketNo: true, title: true, requesterId: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  for (const t of tickets) {
+    entries.push({
+      action: "สร้างคำร้อง",
+      target: t.ticketNo,
+      actorId: t.requesterId,
+      detail: t.title,
+      createdAt: t.createdAt,
+    });
+  }
+
+  const histories = await prisma.ticketStatusHistory.findMany({
+    where: { note: { not: null } },
+    include: { ticket: { select: { ticketNo: true } } },
+    orderBy: { at: "asc" },
+  });
+  for (const h of histories) {
+    const note = h.note!.trim();
+    if (!note) continue;
+    const { action, detail } = auditFromHistoryNote(note);
+    entries.push({
+      action,
+      target: h.ticket.ticketNo,
+      actorId: actorIdFromNote(note, byName),
+      detail,
+      createdAt: h.at,
+    });
+  }
+
+  entries.push({
+    action: "โหลดข้อมูลตัวอย่าง",
+    target: "database",
+    actorId: "admin-001",
+    detail: "seed IOC workflow",
+    createdAt: d("2026-06-19T12:00:00Z"),
+  });
+
+  entries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  await prisma.auditLog.createMany({
+    data: entries.map((e) => ({
+      action: e.action,
+      target: e.target,
+      actorId: e.actorId,
+      detail: e.detail ?? null,
+      createdAt: e.createdAt,
+    })),
+  });
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 
@@ -286,6 +370,13 @@ async function main() {
           evaluatedAt: d("2026-06-09T09:30:00Z"),
         },
       },
+      progressNotes: {
+        create: {
+          authorId: "officer-001",
+          content: "ส่งมอบแล้ว — จัดส่งกระดาษเรียบร้อย",
+          createdAt: d("2026-06-10T16:00:00Z"),
+        },
+      },
       statusHistory: {
         create: [
           { status: "WAITING_ACK", at: d("2026-06-08T08:00:00Z") },
@@ -338,7 +429,7 @@ async function main() {
       comments: {
         create: {
           authorId: "manager-002",
-          content: "ตารางงานเดือนกรกฎาคนเต็ม ไม่สามารถเปลี่ยนกะได้",
+          content: "ปฏิเสธคำร้อง — เหตุผล: ตารางงานเดือนกรกฎาคมเต็ม ไม่สามารถเปลี่ยนกะได้",
           createdAt: d("2026-06-14T02:00:00Z"),
           updatedAt: d("2026-06-14T02:00:00Z"),
         },
@@ -422,18 +513,7 @@ async function main() {
     },
   });
 
-  await prisma.auditLog.createMany({
-    data: [
-      {
-        id: "log-001",
-        action: "seed",
-        target: "database",
-        actorId: "admin-001",
-        detail: "โหลดข้อมูลตัวอย่าง IOC workflow",
-        createdAt: d("2026-06-19T12:00:00Z"),
-      },
-    ],
-  });
+  await seedAuditLogsFromTickets();
 
   console.log("Seed OK — บัญชีทดสอบ: staff1 / officer1 / manager1 / admin1 (รหัสผ่าน: password123)");
   console.log("คำร้องตัวอย่าง: IT-20260619-001, HR-20260619-001 ฯลฯ (แผนกผู้ยื่น-วันที่-เลขรัน)");

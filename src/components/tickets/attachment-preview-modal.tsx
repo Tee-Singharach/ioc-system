@@ -79,9 +79,20 @@ export function AttachmentPreviewModal({ attachment, onClose }: AttachmentPrevie
               className="h-[70vh] w-full rounded-lg border border-zinc-200 bg-white"
             />
           ) : (
-            <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-zinc-200 bg-white text-center">
-              <p className="text-sm font-medium text-zinc-700">ไม่สามารถแสดงตัวอย่างไฟล์นี้ในระบบได้</p>
-              <p className="mt-1 text-xs text-zinc-500">รองรับการดูตัวอย่างเฉพาะไฟล์รูปภาพและ PDF</p>
+            <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-zinc-200 bg-white text-center">
+              <p className="text-sm font-medium text-zinc-700">
+                {url ? "ไม่สามารถแสดงตัวอย่างไฟล์นี้ในเบราว์เซอร์ได้" : "ไม่สามารถแสดงตัวอย่างไฟล์นี้ในระบบได้"}
+              </p>
+              <p className="text-xs text-zinc-500">รองรับการดูตัวอย่างเฉพาะไฟล์รูปภาพและ PDF</p>
+              {url && (
+                <a
+                  href={url}
+                  download={attachment.name}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  ดาวน์โหลดไฟล์
+                </a>
+              )}
             </div>
           )}
         </div>

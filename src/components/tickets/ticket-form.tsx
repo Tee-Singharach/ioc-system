@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 import { File, FileText, Image, Upload, X } from "lucide-react";
-import type { Priority, TicketFormData } from "@/lib/types/ticket";
+import type { Attachment, Priority, TicketFormData } from "@/lib/types/ticket";
 import { PRIORITIES } from "@/lib/types/ticket";
 import { useCatalog } from "@/providers/catalog-provider";
+import { fileToBase64 } from "@/lib/client/file-to-base64";
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from "@/lib/datetime-local";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -16,8 +17,11 @@ import { FORM_FIELD_CLASS, FormSection } from "@/components/ui/form-section";
 const MAX_FILE_SIZE_MB = 200;
 
 interface AttachmentItem {
+  id?: string;
   name: string;
   size?: number;
+  url?: string;
+  file?: File;
 }
 
 function formatFileSize(bytes: number) {
@@ -36,14 +40,16 @@ function attachmentIcon(name: string) {
 interface TicketFormProps {
   header?: { title: string; description?: string };
   initialData?: Partial<TicketFormData>;
+  initialAttachments?: Attachment[];
   submitLabel?: string;
-  onSubmit: (data: TicketFormData) => void;
+  onSubmit: (data: TicketFormData) => void | Promise<void>;
   onCancel?: () => void;
 }
 
 export function TicketForm({
   header,
   initialData,
+  initialAttachments,
   submitLabel = "สร้างคำร้อง",
   onSubmit,
   onCancel,
@@ -62,10 +68,13 @@ export function TicketForm({
     initialData?.scheduledEndAt ? toDatetimeLocalValue(initialData.scheduledEndAt) : "",
   );
   const [attachments, setAttachments] = useState<AttachmentItem[]>(
-    initialData?.attachmentNames?.map((name) => ({ name })) ?? [],
+    initialAttachments?.map((a) => ({ id: a.id, name: a.name, size: a.size, url: a.url })) ??
+      initialData?.attachmentNames?.map((name) => ({ name })) ??
+      [],
   );
   const [dragActive, setDragActive] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (departmentId || !departments.length) return;
@@ -73,7 +82,12 @@ export function TicketForm({
   }, [departments, departmentId, initialData?.departmentId]);
 
   function addFiles(files: File[]) {
-    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+    if (!files.length) return;
+    const combined = [
+      ...attachments,
+      ...files.map((f) => ({ name: f.name, size: f.size, file: f })),
+    ];
+    const totalSize = combined.reduce((sum, a) => sum + (a.size ?? 0), 0);
     if (totalSize > MAX_FILE_SIZE_MB * 1024 * 1024) {
       setErrors((prev) => ({ ...prev, attachments: `ขนาดไฟล์รวมต้องไม่เกิน ${MAX_FILE_SIZE_MB} MB` }));
       return;
@@ -83,7 +97,7 @@ export function TicketForm({
       delete next.attachments;
       return next;
     });
-    setAttachments(files.map((f) => ({ name: f.name, size: f.size })));
+    setAttachments(combined);
   }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -101,7 +115,7 @@ export function TicketForm({
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     if (!title.trim()) newErrors.title = "กรุณากรอกหัวข้อ";
@@ -115,15 +129,33 @@ export function TicketForm({
       setErrors(newErrors);
       return;
     }
-    onSubmit({
-      title: title.trim(),
-      description: description.trim(),
-      priority,
-      departmentId,
-      scheduledStartAt: fromDatetimeLocalValue(scheduledStart),
-      scheduledEndAt: fromDatetimeLocalValue(scheduledEnd),
-      attachmentNames: attachments.map((a) => a.name),
-    });
+
+    setSubmitting(true);
+    try {
+      const attachmentUploads = await Promise.all(
+        attachments
+          .filter((a): a is AttachmentItem & { file: File } => !!a.file)
+          .map(async (a) => ({
+            name: a.name,
+            size: a.size ?? a.file.size,
+            dataBase64: await fileToBase64(a.file),
+          })),
+      );
+
+      await onSubmit({
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        departmentId,
+        scheduledStartAt: fromDatetimeLocalValue(scheduledStart),
+        scheduledEndAt: fromDatetimeLocalValue(scheduledEnd),
+        attachmentNames: attachments.map((a) => a.name),
+        attachmentUploads: attachmentUploads.length ? attachmentUploads : undefined,
+        keptAttachmentIds: attachments.filter((a) => a.id).map((a) => a.id!),
+      });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const totalBytes = attachments.reduce((sum, a) => sum + (a.size ?? 0), 0);
@@ -302,8 +334,8 @@ export function TicketForm({
                 ยกเลิก
               </Button>
             )}
-            <Button type="submit" className="px-5 py-2">
-              {submitLabel}
+            <Button type="submit" className="px-5 py-2" disabled={submitting}>
+              {submitting ? "กำลังบันทึก..." : submitLabel}
             </Button>
           </div>
         </form>

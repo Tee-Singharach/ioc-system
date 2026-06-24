@@ -22,6 +22,9 @@ export interface AuditLogEntry {
   target: string;
   actorId: string;
   actorName: string;
+  actorUsername: string;
+  actorRole: UserRole;
+  actorDepartment: string;
   at: string;
   detail?: string;
 }

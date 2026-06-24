@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   BarChart3,
   ClipboardList,
+  KeyRound,
   Pencil,
   Plus,
   Shield,
@@ -21,6 +22,7 @@ import {
   mockUserEmail,
 } from "@/lib/admin-ui";
 import { userInitials } from "@/lib/ticket-progress";
+import { actionAdminResetUserPassword } from "@/lib/actions/data";
 import type { ManagedUser } from "@/lib/types/admin";
 import type { UserRole } from "@/lib/types/ticket";
 import { useMockAdmin } from "@/providers/mock-admin-provider";
@@ -81,6 +83,13 @@ export default function AdminUsersContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ManagedUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<ManagedUser | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetErrors, setResetErrors] = useState<{ password?: string; confirm?: string; form?: string }>({});
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [editPromptUser, setEditPromptUser] = useState<ManagedUser | null>(null);
+  const [resetPromptUser, setResetPromptUser] = useState<ManagedUser | null>(null);
   const [fieldErrors, setFieldErrors] = useState<CreateUserFieldErrors>({});
   const [newUser, setNewUser] = useState(EMPTY_USER);
   const [editForm, setEditForm] = useState({
@@ -141,25 +150,27 @@ export default function AdminUsersContent() {
     return next;
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     const nextFieldErrors = validateCreateForm();
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
       return;
     }
     setFieldErrors({});
-    void newUser.password;
     const username = emailToUsername(newUser.email);
     const name = [newUser.prefix, newUser.firstName, newUser.lastName]
       .map((s) => s.trim())
       .filter(Boolean)
       .join(" ");
-    const err = createUser({
-      username,
-      name,
-      role: newUser.role,
-      departmentId: newUser.departmentId,
-    });
+    const err = await createUser(
+      {
+        username,
+        name,
+        role: newUser.role,
+        departmentId: newUser.departmentId,
+      },
+      newUser.password,
+    );
     if (err) {
       if (err.includes("ชื่อผู้ใช้")) setFieldErrors({ email: err });
       else setFieldErrors({ firstName: err });
@@ -178,13 +189,60 @@ export default function AdminUsersContent() {
     });
   }
 
-  function handleSaveEdit() {
+  function openReset(target: ManagedUser) {
+    setResetTarget(target);
+    setResetPassword("");
+    setResetConfirm("");
+    setResetErrors({});
+  }
+
+  function editHasChanges() {
+    if (!editTarget) return false;
+    return (
+      editForm.role !== editTarget.role || editForm.departmentId !== editTarget.departmentId
+    );
+  }
+
+  async function handleSaveEdit() {
     if (!editTarget) return;
-    if (editForm.role !== editTarget.role) updateUserRole(editTarget.id, editForm.role);
+    if (!editHasChanges()) {
+      setEditTarget(null);
+      return;
+    }
+    if (editForm.role !== editTarget.role) {
+      const err = await updateUserRole(editTarget.id, editForm.role);
+      if (err) return;
+    }
     if (editForm.departmentId !== editTarget.departmentId) {
-      updateUserDepartment(editTarget.id, editForm.departmentId);
+      const err = await updateUserDepartment(editTarget.id, editForm.departmentId);
+      if (err) return;
     }
     setEditTarget(null);
+  }
+
+  async function handleResetPassword() {
+    if (!user || !resetTarget) return;
+    const next: { password?: string; confirm?: string; form?: string } = {};
+    if (!resetPassword.trim()) next.password = "กรุณากรอกรหัสผ่าน";
+    else if (resetPassword.length < 6) next.password = "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร";
+    if (!resetConfirm.trim()) next.confirm = "กรุณายืนยันรหัสผ่าน";
+    else if (resetPassword !== resetConfirm) next.confirm = "รหัสผ่านไม่ตรงกัน";
+    if (Object.keys(next).length > 0) {
+      setResetErrors(next);
+      return;
+    }
+    if (resetSubmitting) return;
+    setResetSubmitting(true);
+    setResetErrors({});
+    const result = await actionAdminResetUserPassword(user, resetTarget.id, resetPassword);
+    setResetSubmitting(false);
+    if (!result.ok) {
+      setResetErrors({ form: result.error });
+      return;
+    }
+    setResetTarget(null);
+    setResetPassword("");
+    setResetConfirm("");
   }
 
   const deleteUser = activeUsers.find((u) => u.id === deleteTarget);
@@ -223,7 +281,7 @@ export default function AdminUsersContent() {
           const meta = ROLE_STAT_META[role];
           const Icon = ROLE_ICONS[role];
           return (
-            <Card key={role} className={`border-l-4 ${meta.accent}`}>
+            <Card key={role}>
               <CardBody className="flex min-h-[7.5rem] items-start gap-4 px-6 py-6">
                 <div
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${meta.iconBg}`}
@@ -301,7 +359,7 @@ export default function AdminUsersContent() {
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-zinc-900">{u.name}</p>
-                              <p className="font-mono text-xs text-zinc-400">{u.id}</p>
+                              <p className="font-mono text-xs text-zinc-400">{u.username}</p>
                             </div>
                           </div>
                         </td>
@@ -317,12 +375,22 @@ export default function AdminUsersContent() {
                             <button
                               type="button"
                               disabled={u.id === user.id}
-                              onClick={() => openEdit(u)}
+                              onClick={() => setEditPromptUser(u)}
                               className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
                               aria-label={`แก้ไข ${u.name}`}
                             >
                               <Pencil className="h-4 w-4" aria-hidden />
                             </button>
+                            {u.id !== user.id && u.role !== "admin" && (
+                              <button
+                                type="button"
+                                onClick={() => setResetPromptUser(u)}
+                                className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-amber-50 hover:text-amber-700"
+                                aria-label={`รีเซ็ตรหัสผ่าน ${u.name}`}
+                              >
+                                <KeyRound className="h-4 w-4" aria-hidden />
+                              </button>
+                            )}
                             {u.id !== user.id && u.role !== "admin" && (
                               <button
                                 type="button"
@@ -391,18 +459,106 @@ export default function AdminUsersContent() {
         </UserFormModal>
       )}
 
+      {resetTarget && (
+        <UserFormModal
+          title="รีเซ็ตรหัสผ่าน"
+          submitLabel={resetSubmitting ? "กำลังบันทึก..." : "รีเซ็ตรหัสผ่าน"}
+          submitDisabled={resetSubmitting}
+          onClose={() => {
+            if (resetSubmitting) return;
+            setResetTarget(null);
+            setResetErrors({});
+          }}
+          onSubmit={() => void handleResetPassword()}
+        >
+          <p className="text-sm text-zinc-600">
+            ตั้งรหัสผ่านใหม่ให้ <span className="font-medium text-zinc-900">{resetTarget.name}</span>{" "}
+            (<span className="font-mono text-xs">{resetTarget.username}</span>)
+          </p>
+          <Input
+            label="รหัสผ่านใหม่"
+            type="password"
+            value={resetPassword}
+            onChange={(e) => {
+              setResetPassword(e.target.value);
+              setResetErrors((prev) => {
+                const next = { ...prev };
+                delete next.password;
+                delete next.form;
+                return next;
+              });
+            }}
+            autoComplete="new-password"
+            error={resetErrors.password}
+          />
+          <Input
+            label="ยืนยันรหัสผ่านใหม่"
+            type="password"
+            value={resetConfirm}
+            onChange={(e) => {
+              setResetConfirm(e.target.value);
+              setResetErrors((prev) => {
+                const next = { ...prev };
+                delete next.confirm;
+                delete next.form;
+                return next;
+              });
+            }}
+            autoComplete="new-password"
+            error={resetErrors.confirm}
+          />
+          {resetErrors.form && <p className="text-sm text-red-600">{resetErrors.form}</p>}
+          <p className="text-xs text-zinc-500">บันทึกใน Audit Log — แจ้งผู้ใช้ทางช่องทางอื่น</p>
+        </UserFormModal>
+      )}
+
       <ConfirmModal
-        open={deleteTarget !== null}
-        title="ลบผู้ใช้"
+        open={editPromptUser !== null}
+        title="แก้ไขผู้ใช้"
         description={
-          deleteUser
-            ? `ลบ ${deleteUser.name} (${deleteUser.username}) — บันทึกใน Audit Log`
+          editPromptUser
+            ? `ต้องการแก้ไขบทบาทหรือฝ่ายของ ${editPromptUser.name} (${editPromptUser.username})?`
             : undefined
         }
-        confirmLabel="ลบ"
-        variant="danger"
+        confirmLabel="ดำเนินการต่อ"
         onConfirm={() => {
-          if (deleteTarget) softDeleteUser(deleteTarget);
+          if (editPromptUser) openEdit(editPromptUser);
+          setEditPromptUser(null);
+        }}
+        onCancel={() => setEditPromptUser(null)}
+      />
+
+      <ConfirmModal
+        open={resetPromptUser !== null}
+        title="รีเซ็ตรหัสผ่าน"
+        description={
+          resetPromptUser
+            ? `ต้องการตั้งรหัสผ่านใหม่ให้ ${resetPromptUser.name} (${resetPromptUser.username})?`
+            : undefined
+        }
+        confirmLabel="ดำเนินการต่อ"
+        onConfirm={() => {
+          if (resetPromptUser) openReset(resetPromptUser);
+          setResetPromptUser(null);
+        }}
+        onCancel={() => setResetPromptUser(null)}
+      />
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="ยืนยันลบผู้ใช้"
+        description={
+          deleteUser
+            ? `ลบ ${deleteUser.name} (${deleteUser.username}) ออกจากระบบ? การดำเนินการนี้บันทึกใน Audit Log`
+            : undefined
+        }
+        confirmLabel="ลบผู้ใช้"
+        variant="danger"
+        onConfirm={async () => {
+          if (deleteTarget) {
+            const err = await softDeleteUser(deleteTarget);
+            if (err) return;
+          }
           setDeleteTarget(null);
         }}
         onCancel={() => setDeleteTarget(null)}
@@ -417,12 +573,14 @@ function UserFormModal({
   onClose,
   onSubmit,
   submitLabel = "บันทึก",
+  submitDisabled = false,
 }: {
   title: string;
   children: React.ReactNode;
   onClose: () => void;
   onSubmit: () => void;
   submitLabel?: string;
+  submitDisabled?: boolean;
 }) {
   return (
     <ModalPortal>
@@ -441,7 +599,7 @@ function UserFormModal({
             <Button type="button" variant="secondary" onClick={onClose}>
               ยกเลิก
             </Button>
-            <Button type="button" onClick={onSubmit}>
+            <Button type="button" onClick={onSubmit} disabled={submitDisabled}>
               {submitLabel}
             </Button>
           </div>

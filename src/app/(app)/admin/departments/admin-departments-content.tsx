@@ -70,14 +70,14 @@ export default function AdminDepartmentsContent() {
     return next;
   }
 
-  function handleAdd() {
+  async function handleAdd() {
     const nextErrors = validateDeptForm(addForm, false);
     if (Object.keys(nextErrors).length > 0) {
       setAddErrors(nextErrors);
       return;
     }
     setAddErrors({});
-    const err = createDepartment(addForm);
+    const err = await createDepartment(addForm);
     if (err) {
       setAddFormError(err);
       return;
@@ -100,7 +100,7 @@ export default function AdminDepartmentsContent() {
     setEditFormError(null);
   }
 
-  function handleEdit() {
+  async function handleEdit() {
     if (!editId) return;
     const nextErrors = validateDeptForm(editForm, true);
     if (Object.keys(nextErrors).length > 0) {
@@ -108,7 +108,7 @@ export default function AdminDepartmentsContent() {
       return;
     }
     setEditErrors({});
-    const err = updateDepartment(editId, {
+    const err = await updateDepartment(editId, {
       name: editForm.name,
       shortName: editForm.shortName,
     });
@@ -119,9 +119,9 @@ export default function AdminDepartmentsContent() {
     setEditId(null);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteId) return;
-    const err = softDeleteDepartment(deleteId);
+    const err = await softDeleteDepartment(deleteId);
     if (err) {
       setDeleteError(err);
       return;

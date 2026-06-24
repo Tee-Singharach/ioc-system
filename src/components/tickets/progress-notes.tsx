@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import type { ProgressNote } from "@/lib/types/ticket";
-import { formatShortDate } from "@/lib/ticket-progress";
+import {
+  formatShortDate,
+  handoffProgressReason,
+  isHandoffProgressNote,
+} from "@/lib/ticket-progress";
 import { Button } from "@/components/ui/button";
 
 export function ProgressNotes({
@@ -24,14 +29,36 @@ export function ProgressNotes({
       <h2 className="text-sm font-semibold text-zinc-900">ความคืบหน้า</h2>
       {notes.length > 0 ? (
         <ul className="mt-3 space-y-3">
-          {notes.map((n) => (
-            <li key={n.id} className="rounded-lg border border-zinc-200/80 bg-white p-3">
-              <p className="text-xs text-zinc-500">
-                {n.authorName} · {formatShortDate(n.createdAt)}
-              </p>
-              <p className="mt-1 text-sm leading-relaxed text-zinc-800">{n.content}</p>
-            </li>
-          ))}
+          {notes.map((n) => {
+            const handoff = isHandoffProgressNote(n.content);
+            return (
+              <li
+                key={n.id}
+                className={
+                  handoff
+                    ? "rounded-lg border border-emerald-200 bg-emerald-50 p-3"
+                    : "rounded-lg border border-zinc-200/80 bg-white p-3"
+                }
+              >
+                {handoff ? (
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    ส่งมอบแล้ว
+                  </div>
+                ) : null}
+                <p className={`text-xs ${handoff ? "mt-1 text-emerald-600/80" : "text-zinc-500"}`}>
+                  {n.authorName} · {formatShortDate(n.createdAt)}
+                </p>
+                <p
+                  className={`mt-1 text-sm leading-relaxed ${
+                    handoff ? "font-medium text-emerald-900" : "text-zinc-800"
+                  }`}
+                >
+                  {handoff ? handoffProgressReason(n.content) : n.content}
+                </p>
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p className="mt-2 text-xs text-zinc-500">ยังไม่มีบันทึกความคืบหน้า</p>
