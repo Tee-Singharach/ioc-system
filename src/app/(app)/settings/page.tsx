@@ -3,7 +3,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { KeyRound, Pencil, User } from "lucide-react";
 import type { UserRole } from "@/lib/types/ticket";
-import { MOCK_DEPARTMENTS } from "@/lib/mock/data";
+import { useCatalog } from "@/providers/catalog-provider";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
 
 export default function SettingsPage() {
   const { user, updateName } = useMockAuth();
+  const { departments } = useCatalog();
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [nameError, setNameError] = useState("");
@@ -45,13 +46,15 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  const departmentName =
+    departments.find((d) => d.id === user?.departmentId)?.name ?? "—";
+
   if (!user) return null;
 
-  const departmentName =
-    MOCK_DEPARTMENTS.find((d) => d.id === user.departmentId)?.name ?? "—";
+  const profile = user;
 
   function startEditName() {
-    setNameDraft(user.name);
+    setNameDraft(profile.name);
     setNameError("");
     setNameSaved(false);
     setEditingName(true);
@@ -69,7 +72,7 @@ export default function SettingsPage() {
       setNameError("กรุณากรอกชื่อ-นามสกุล");
       return;
     }
-    if (trimmed === user.name) {
+    if (trimmed === profile.name) {
       setEditingName(false);
       return;
     }

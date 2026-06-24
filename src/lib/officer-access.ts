@@ -14,17 +14,43 @@ export function getInboxPendingTickets(
   );
 }
 
-export function getOfficerMyTasks(
-  tickets: Ticket[],
-  officer: Pick<User, "id">,
-): Ticket[] {
-  return tickets.filter((t) => {
-    if (TERMINAL_STATUSES.includes(t.status)) return false;
-    const mine = t.assigneeId === officer.id || t.receivedById === officer.id;
-    if (!mine) return false;
+function isOfficerMyTask(
+  t: Ticket,
+  officer: Pick<User, "id" | "departmentId">,
+): boolean {
+  if (TERMINAL_STATUSES.includes(t.status)) return false;
+
+  const mine = t.assigneeId === officer.id || t.receivedById === officer.id;
+  if (mine) {
     if (t.status === "รอรับเรื่อง" && !t.receivedById) return false;
     return true;
-  });
+  }
+
+  // ponytail: งานกำลังดำเนินการในแผนก — ให้เจ้าหน้าที่เห็นตัวอย่าง workflow (ดำเนินการได้เฉพาะงานที่รับ/มอบหมาย)
+  return t.status === "กำลังดำเนินการ" && t.departmentId === officer.departmentId;
+}
+
+export function getOfficerMyTasks(
+  tickets: Ticket[],
+  officer: Pick<User, "id" | "departmentId">,
+): Ticket[] {
+  return tickets.filter((t) => isOfficerMyTask(t, officer));
+}
+
+/** งานของฉัน — ประเมิน / รออนุมัติ (ยังไม่เข้าขั้นดำเนินการ) */
+export function getOfficerAssignedTasks(
+  tickets: Ticket[],
+  officer: Pick<User, "id" | "departmentId">,
+): Ticket[] {
+  return getOfficerMyTasks(tickets, officer).filter((t) => t.status !== "กำลังดำเนินการ");
+}
+
+/** แท็บดำเนินการ — กำลังดำเนินการในงานของฉันหรือในแผนก */
+export function getOfficerInProgressTasks(
+  tickets: Ticket[],
+  officer: Pick<User, "id" | "departmentId">,
+): Ticket[] {
+  return getOfficerMyTasks(tickets, officer).filter((t) => t.status === "กำลังดำเนินการ");
 }
 
 export function getOfficerTickets(tickets: Ticket[], officer: Pick<User, "id" | "departmentId">): Ticket[] {
@@ -58,4 +84,32 @@ export function homePathForRole(role: User["role"]): string {
   if (role === "admin") return "/admin/users";
   if (role === "staff") return "/tickets";
   return "/login";
+}
+
+if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
+  const sample: Ticket[] = [
+    {
+      id: "a",
+      status: "กำลังดำเนินการ",
+      departmentId: "dept-it",
+      assigneeId: "officer-001",
+      receivedById: "officer-001",
+    } as Ticket,
+    {
+      id: "b",
+      status: "กำลังดำเนินการ",
+      departmentId: "dept-it",
+      assigneeId: "officer-001",
+      receivedById: "officer-001",
+    } as Ticket,
+  ];
+  const assigned = getOfficerAssignedTasks(sample, { id: "officer-001", departmentId: "dept-it" });
+  const inProgress = getOfficerInProgressTasks(sample, { id: "officer-001", departmentId: "dept-it" });
+  if (assigned.length !== 0 || inProgress.length !== 2) {
+    throw new Error("officer-access: assigned vs in-progress split");
+  }
+  const peer = getOfficerInProgressTasks(sample, { id: "officer-002", departmentId: "dept-it" });
+  if (!peer.some((t) => t.id === "a")) {
+    throw new Error("officer-access: dept in-progress tasks should appear in in-progress tab");
+  }
 }

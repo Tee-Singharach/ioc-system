@@ -71,7 +71,8 @@ function EvaluationField({
 }
 
 export function EvaluationCard({ evaluation }: { evaluation: TicketEvaluation }) {
-  const cost = formatEstimatedCost(evaluation.estimatedCost);
+  const hasCost = evaluation.estimatedCost != null && !Number.isNaN(evaluation.estimatedCost);
+  const costLabel = hasCost ? formatEstimatedCost(evaluation.estimatedCost) : null;
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-200/80 bg-white">
@@ -90,9 +91,9 @@ export function EvaluationCard({ evaluation }: { evaluation: TicketEvaluation })
         <EvaluationField label="ผลการตรวจสอบ">
           <span className="whitespace-pre-wrap">{evaluation.diagnosis}</span>
         </EvaluationField>
-        {cost && (
+        {hasCost && costLabel && (
           <EvaluationField label="ประมาณค่าใช้จ่าย" highlight>
-            <span className="font-semibold text-emerald-800">{cost}</span>
+            <span className="font-semibold text-emerald-800">{costLabel}</span>
           </EvaluationField>
         )}
         {evaluation.notes?.trim() && (
@@ -192,9 +193,13 @@ export function EvaluationForm({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const cost = hasCost ? parseEstimatedCost(estimatedCost) : undefined;
+    const parsedCost = hasCost ? parseEstimatedCost(estimatedCost) : null;
     const payload = { diagnosis: diagnosis.trim() };
     const next = validateEvaluationPayload(ticket, payload);
+    if (hasCost && estimatedCost.trim() && parsedCost == null) {
+      setErrors({ estimatedCost: "รูปแบบจำนวนเงินไม่ถูกต้อง" });
+      return;
+    }
     if (Object.keys(next).length) {
       setErrors(next);
       return;
@@ -202,7 +207,7 @@ export function EvaluationForm({
     setErrors({});
     onSave({
       diagnosis: payload.diagnosis,
-      estimatedCost: cost,
+      estimatedCost: parsedCost,
       notes: notes.trim() || undefined,
     });
     onSaved?.();
@@ -240,6 +245,7 @@ export function EvaluationForm({
             onChange={(ev) => setEstimatedCost(ev.target.value)}
             placeholder="ไม่บังคับ — เช่น 1,500"
             inputMode="decimal"
+            error={errors.estimatedCost}
             className={FORM_FIELD_CLASS}
           />
         </CostToggle>

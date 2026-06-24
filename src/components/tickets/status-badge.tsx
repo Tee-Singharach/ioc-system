@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import type { TicketStatus } from "@/lib/types/ticket";
+import { workflowStatusLabel } from "@/lib/ticket-workflow";
 import { Badge } from "@/components/ui/badge";
 
 type BadgeColor = NonNullable<ComponentProps<typeof Badge>["color"]>;
@@ -13,6 +14,15 @@ const statusColors: Record<TicketStatus, BadgeColor> = {
   "ยกเลิก": "gray",
 };
 
-export function StatusBadge({ status }: { status: TicketStatus }) {
-  return <Badge color={statusColors[status]}>{status}</Badge>;
+export function StatusBadge({
+  status,
+  receivedById,
+}: {
+  status: TicketStatus;
+  receivedById?: string | null;
+}) {
+  const label = workflowStatusLabel({ status, receivedById: receivedById ?? undefined });
+  const color =
+    status === "รอรับเรื่อง" && receivedById ? "purple" : statusColors[status];
+  return <Badge color={color}>{label}</Badge>;
 }

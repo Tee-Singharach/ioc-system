@@ -32,3 +32,13 @@ export function formatShortDate(iso: string) {
     year: "2-digit",
   });
 }
+
+export function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

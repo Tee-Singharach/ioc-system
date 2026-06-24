@@ -12,6 +12,8 @@ import { clearSession } from "@/lib/mock/session";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import type { UserRole } from "@/lib/types/ticket";
 
+const DEMO_PASSWORD = "password123";
+
 const QUICK_LOGINS: { username: string; role: UserRole; label: string }[] = [
   { username: "staff1", role: "staff", label: ROLE_TAB_LABELS.staff },
   { username: "officer1", role: "officer", label: ROLE_TAB_LABELS.officer },
@@ -24,6 +26,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -34,9 +37,11 @@ export default function LoginPage() {
     clearSession();
   }, [user, router]);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    login(username, password);
+    setLoginError("");
+    const ok = await login(username, password);
+    if (!ok) setLoginError("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
   }
 
   if (user?.role === "staff" || user?.role === "officer" || user?.role === "manager" || user?.role === "admin") {
@@ -65,6 +70,7 @@ export default function LoginPage() {
           placeholder="••••••••"
           autoComplete="current-password"
         />
+        {loginError ? <p className="text-sm text-red-600">{loginError}</p> : null}
         <Button type="submit" className="w-full">
           เข้าสู่ระบบ
         </Button>
@@ -76,7 +82,8 @@ export default function LoginPage() {
       </form>
 
       <div className="mt-6 border-t border-zinc-100 pt-5">
-        <p className="mb-3 text-center text-xs font-medium text-zinc-500">ทดลองใช้งาน</p>
+        <p className="mb-1 text-center text-xs font-medium text-zinc-500">ทดลองใช้งาน</p>
+        <p className="mb-3 text-center text-xs text-zinc-400">รหัสผ่าน: {DEMO_PASSWORD}</p>
         <div className="grid grid-cols-2 gap-2">
           {QUICK_LOGINS.map((item) => (
             <Button
@@ -84,7 +91,7 @@ export default function LoginPage() {
               type="button"
               variant="secondary"
               className="w-full"
-              onClick={() => login(item.username, "")}
+              onClick={() => void login(item.username, DEMO_PASSWORD)}
             >
               {item.label}
             </Button>

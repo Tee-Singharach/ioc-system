@@ -5,8 +5,6 @@ import {
   type WorkflowFilterTab,
 } from "@/lib/ticket-workflow";
 
-export type { WorkflowFilterTab as StatusTab };
-
 interface TicketStatusTabsProps {
   active: WorkflowFilterTab;
   counts: Record<WorkflowFilterTab, number>;

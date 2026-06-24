@@ -4,7 +4,7 @@ import { memo, useCallback, useMemo, useRef, useState, type FormEvent } from "re
 import { Paperclip, Pencil, Send, Trash2, X } from "lucide-react";
 import type { Attachment, Comment } from "@/lib/types/ticket";
 import { AttachmentPreviewModal } from "@/components/tickets/attachment-preview-modal";
-import { formatRelativeTime, userInitials } from "@/lib/ticket-progress";
+import { formatDateTime, userInitials } from "@/lib/ticket-progress";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 
@@ -44,7 +44,9 @@ const CreationFeedItem = memo(function CreationFeedItem({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-semibold text-zinc-900">{authorName}</span>
-          <time suppressHydrationWarning className="text-xs text-zinc-400">{formatRelativeTime(createdAt)}</time>
+          <time suppressHydrationWarning dateTime={createdAt} className="text-xs text-zinc-400">
+            {formatDateTime(createdAt)}
+          </time>
         </div>
         <p className="mt-2 rounded-xl bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
           {content}
@@ -84,7 +86,9 @@ const CommentFeedItem = memo(function CommentFeedItem({
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="text-sm font-semibold text-zinc-900">{comment.authorName}</span>
-            <time suppressHydrationWarning className="text-xs text-zinc-400">{formatRelativeTime(comment.createdAt)}</time>
+            <time suppressHydrationWarning dateTime={comment.createdAt} className="text-xs text-zinc-400">
+              {formatDateTime(comment.createdAt)}
+            </time>
             {comment.updatedAt !== comment.createdAt && (
               <span className="text-xs text-zinc-400">(แก้ไขแล้ว)</span>
             )}

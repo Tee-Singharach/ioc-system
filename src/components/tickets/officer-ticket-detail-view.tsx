@@ -108,7 +108,7 @@ export function OfficerTicketDetailView({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-sm font-semibold text-zinc-600">{ticket.ticketNo}</span>
-          <StatusBadge status={ticket.status} />
+          <StatusBadge status={ticket.status} receivedById={ticket.receivedById} />
           <PriorityBadge priority={ticket.priority} />
           {overdue && <OverdueBadge />}
         </div>

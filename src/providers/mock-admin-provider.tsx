@@ -4,15 +4,16 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 import {
-  INITIAL_AUDIT_LOGS,
-  INITIAL_MANAGED_DEPARTMENTS,
-  INITIAL_MANAGED_USERS,
-} from "@/lib/mock/data";
+  fetchAdminDepartments,
+  fetchAdminUsers,
+  fetchAuditLogs,
+} from "@/lib/actions/data";
 import type { AuditLogEntry, ManagedDepartment, ManagedUser } from "@/lib/types/admin";
 import type { UserRole } from "@/lib/types/ticket";
 import { useMockAuth } from "@/providers/mock-auth-provider";
@@ -38,7 +39,6 @@ interface MockAdminContextValue {
     id: string,
     input: { name: string; shortName: string },
   ) => string | null;
-  renameDepartment: (id: string, name: string) => void;
   softDeleteDepartment: (id: string) => string | null;
 }
 
@@ -46,9 +46,24 @@ const MockAdminContext = createContext<MockAdminContextValue | null>(null);
 
 export function MockAdminProvider({ children }: { children: ReactNode }) {
   const { user: actor } = useMockAuth();
-  const [users, setUsers] = useState(INITIAL_MANAGED_USERS);
-  const [departments, setDepartments] = useState(INITIAL_MANAGED_DEPARTMENTS);
-  const [auditLogs, setAuditLogs] = useState(INITIAL_AUDIT_LOGS);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [departments, setDepartments] = useState<ManagedDepartment[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([fetchAdminUsers(), fetchAdminDepartments(), fetchAuditLogs()]).then(
+      ([u, d, logs]) => {
+        if (cancelled) return;
+        setUsers(u);
+        setDepartments(d);
+        setAuditLogs(logs);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const appendLog = useCallback(
     (action: string, target: string, detail?: string) => {
@@ -177,18 +192,6 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
     [departments, appendLog],
   );
 
-  const renameDepartment = useCallback(
-    (id: string, name: string) => {
-      const trimmed = name.trim();
-      const target = departments.find((d) => d.id === id);
-      if (!target || target.deletedAt || !trimmed) return;
-      if (departments.some((d) => d.id !== id && d.name === trimmed && !d.deletedAt)) return;
-      setDepartments((prev) => prev.map((d) => (d.id === id ? { ...d, name: trimmed } : d)));
-      appendLog("แก้ไขแผนก", target.id, `เปลี่ยนชื่อเป็น ${trimmed}`);
-    },
-    [departments, appendLog],
-  );
-
   const softDeleteDepartment = useCallback(
     (id: string): string | null => {
       const target = departments.find((d) => d.id === id);
@@ -214,7 +217,6 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
       createUser,
       createDepartment,
       updateDepartment,
-      renameDepartment,
       softDeleteDepartment,
     }),
     [
@@ -227,7 +229,6 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
       createUser,
       createDepartment,
       updateDepartment,
-      renameDepartment,
       softDeleteDepartment,
     ],
   );

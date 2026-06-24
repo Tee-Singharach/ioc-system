@@ -3,13 +3,13 @@
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@/lib/types/ticket";
-import { resolveMockUser } from "@/lib/mock/resolve-user";
+import { loginWithPassword } from "@/lib/actions/data";
 import { homePathForRole } from "@/lib/officer-access";
 import { clearSession, getServerSessionSnapshot, getSessionRaw, parseSession, setSession, subscribeSession } from "@/lib/mock/session";
 
 interface MockAuthContextValue {
   user: User | null;
-  login: (username: string, password: string) => void;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateName: (name: string) => void;
 }
@@ -21,12 +21,12 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   const sessionRaw = useSyncExternalStore(subscribeSession, getSessionRaw, getServerSessionSnapshot);
   const user = useMemo(() => parseSession(sessionRaw), [sessionRaw]);
 
-  const login = useCallback((username: string, password: string) => {
-    // TODO: replace with real JWT authentication (password: ${password})
-    void password;
-    const sessionUser = resolveMockUser(username);
+  const login = useCallback(async (username: string, password: string) => {
+    const sessionUser = await loginWithPassword(username, password);
+    if (!sessionUser) return false;
     setSession(sessionUser);
     router.push(homePathForRole(sessionUser.role));
+    return true;
   }, [router]);
 
   const logout = useCallback(() => {

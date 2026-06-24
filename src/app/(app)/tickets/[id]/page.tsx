@@ -2,9 +2,9 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MoreVertical, Pencil, RotateCcw, XCircle } from "lucide-react";
+import { ArrowLeft, MoreVertical, Pencil, XCircle } from "lucide-react";
 import { TicketAttachmentList } from "@/components/tickets/ticket-attachment-list";
-import { canCancel, canEdit, canResubmit } from "@/lib/ticket-rules";
+import { canCancel, canEdit } from "@/lib/ticket-rules";
 import { formatShortDate, userInitials } from "@/lib/ticket-progress";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
@@ -12,11 +12,11 @@ import { StatusBadge } from "@/components/tickets/status-badge";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { TicketStepper } from "@/components/tickets/ticket-stepper";
 import { EvaluationCard } from "@/components/tickets/ticket-evaluation";
+import { StaffResubmitPanel } from "@/components/tickets/staff-resubmit-panel";
 import { StaffWorkflowHint } from "@/components/tickets/staff-workflow-hint";
 import { ProgressNotes } from "@/components/tickets/progress-notes";
 import { TicketComments } from "@/components/tickets/ticket-comments";
 import { TicketForm } from "@/components/tickets/ticket-form";
-import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { Card, CardBody } from "@/components/ui/card";
 
@@ -80,7 +80,7 @@ export default function StaffTicketDetailPage({ params }: { params: Promise<{ id
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-sm font-semibold text-zinc-600">{ticket.ticketNo}</span>
-            <StatusBadge status={ticket.status} />
+            <StatusBadge status={ticket.status} receivedById={ticket.receivedById} />
             <PriorityBadge priority={ticket.priority} />
           </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
@@ -151,6 +151,7 @@ export default function StaffTicketDetailPage({ params }: { params: Promise<{ id
           <Card>
             <CardBody className="space-y-6 p-5 sm:p-6">
               <TicketStepper ticket={ticket} />
+              <StaffResubmitPanel ticket={ticket} onResubmit={() => setDialog("resubmit")} />
               <StaffWorkflowHint ticket={ticket} />
               {ticket.evaluation && <EvaluationCard evaluation={ticket.evaluation} />}
 
@@ -194,14 +195,6 @@ export default function StaffTicketDetailPage({ params }: { params: Promise<{ id
                 </div>
               )}
 
-              {canResubmit(ticket) && (
-                <div className="border-t border-zinc-100 pt-6">
-                  <Button type="button" onClick={() => setDialog("resubmit")}>
-                    <RotateCcw className="h-4 w-4" aria-hidden />
-                    ส่งคำร้องใหม่
-                  </Button>
-                </div>
-              )}
             </CardBody>
           </Card>
 

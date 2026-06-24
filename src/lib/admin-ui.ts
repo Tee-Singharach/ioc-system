@@ -1,6 +1,5 @@
 import type { AuditLogEntry } from "@/lib/types/admin";
 import type { UserRole } from "@/lib/types/ticket";
-import { userInitials } from "@/lib/ticket-progress";
 
 export type AuditCategory = "all" | "workflow" | "user" | "security" | "system";
 

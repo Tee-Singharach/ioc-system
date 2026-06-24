@@ -9,6 +9,7 @@ import {
   getTicketActivitySeries,
 } from "@/lib/manager-dashboard";
 import { formatShortDate } from "@/lib/ticket-progress";
+import { TICKET_WORKFLOW_STEPS, workflowStepIndex } from "@/lib/ticket-workflow";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
 import {
@@ -84,7 +85,10 @@ export default function ManagerDashboardContent() {
             <p className="px-5 py-10 text-center text-sm text-zinc-500">ยังไม่มีคำร้องในแผนก</p>
           ) : (
             <ul>
-              {latest.map((ticket) => (
+              {latest.map((ticket) => {
+                const stepLabel =
+                  TICKET_WORKFLOW_STEPS[workflowStepIndex(ticket)]?.label ?? ticket.status;
+                return (
                 <li key={ticket.id} className="border-b border-zinc-100 px-5 py-3.5 last:border-b-0">
                   <Link
                     href={`/manager/tickets/${ticket.id}`}
@@ -92,15 +96,20 @@ export default function ManagerDashboardContent() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-zinc-900">{ticket.title}</p>
-                      <p className="mt-0.5 font-mono text-xs text-zinc-500">{ticket.ticketNo}</p>
+                      <p className="mt-0.5 text-xs text-zinc-500">
+                        <span className="font-mono">{ticket.ticketNo}</span>
+                        <span aria-hidden> · </span>
+                        {stepLabel}
+                      </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                       <time className="text-xs text-zinc-400">{formatShortDate(ticket.updatedAt)}</time>
-                      <StatusBadge status={ticket.status} />
+                      <StatusBadge status={ticket.status} receivedById={ticket.receivedById} />
                     </div>
                   </Link>
                 </li>
-              ))}
+              );
+              })}
             </ul>
           )}
         </CardBody>

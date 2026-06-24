@@ -12,7 +12,9 @@ import { useMockTickets } from "@/providers/mock-ticket-provider";
 import { ManagerActions } from "@/components/tickets/manager-actions";
 import { OverdueBadge } from "@/components/tickets/officer-actions";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
+import { ProgressNotes } from "@/components/tickets/progress-notes";
 import { StatusBadge } from "@/components/tickets/status-badge";
+import { StaffWorkflowHint } from "@/components/tickets/staff-workflow-hint";
 import { TicketComments } from "@/components/tickets/ticket-comments";
 import { TicketStepper } from "@/components/tickets/ticket-stepper";
 import { EvaluationCard } from "@/components/tickets/ticket-evaluation";
@@ -80,7 +82,7 @@ export default function ManagerTicketDetailPage({ params }: { params: Promise<{ 
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-sm font-semibold text-zinc-600">{ticket.ticketNo}</span>
-          <StatusBadge status={ticket.status} />
+          <StatusBadge status={ticket.status} receivedById={ticket.receivedById} />
           <PriorityBadge priority={ticket.priority} />
           {overdue && <OverdueBadge />}
         </div>
@@ -94,6 +96,7 @@ export default function ManagerTicketDetailPage({ params }: { params: Promise<{ 
           <Card>
             <CardBody className="space-y-6 p-5 sm:p-6">
               <TicketStepper ticket={ticket} />
+              <StaffWorkflowHint ticket={ticket} />
               {ticket.evaluation && <EvaluationCard evaluation={ticket.evaluation} />}
 
               {ticket.description.trim() && (
@@ -139,6 +142,14 @@ export default function ManagerTicketDetailPage({ params }: { params: Promise<{ 
               )}
             </CardBody>
           </Card>
+
+          {ticket.progressNotes.length > 0 && (
+            <Card>
+              <CardBody className="p-5 sm:p-6">
+                <ProgressNotes notes={ticket.progressNotes} canAdd={false} onAdd={() => {}} />
+              </CardBody>
+            </Card>
+          )}
 
           <Card>
             <CardBody className="p-5 sm:p-6">

@@ -25,6 +25,21 @@ export function ManagerActions({ ticket, onApprove, onReject }: ManagerActionsPr
 
   const decision = getApprovalDecision(ticket);
   const actionable = canApprove(ticket);
+  const rejected = ticket.status === "ปฏิเสธ";
+  const approved = !rejected && decision?.action === "approved";
+
+  function outcomeMeta() {
+    if (rejected) {
+      const entry = [...ticket.statusHistory].reverse().find((h) => h.status === "ปฏิเสธ");
+      return { at: decision?.at ?? entry?.at, note: decision?.note ?? entry?.note };
+    }
+    if (approved && decision) {
+      return { at: decision.at, note: decision.note };
+    }
+    return null;
+  }
+
+  const meta = outcomeMeta();
 
   function handleReject() {
     const trimmed = reason.trim();
@@ -45,19 +60,26 @@ export function ManagerActions({ ticket, onApprove, onReject }: ManagerActionsPr
         <Badge color="purple">ผู้จัดการ</Badge>
       </div>
 
-      {decision && !actionable ? (
-        <div className="mt-4 rounded-xl border border-zinc-200/80 bg-white p-3">
-          <p className="text-xs font-medium text-zinc-500">ผลการพิจารณา</p>
-          <p
-            className={`mt-1 text-sm font-semibold ${
-              decision.action === "approved" ? "text-green-700" : "text-red-600"
-            }`}
-          >
-            {decision.action === "approved" ? "อนุมัติแล้ว" : "ปฏิเสธแล้ว"}
-          </p>
-          <p className="mt-1 text-xs text-zinc-500">{formatShortDate(decision.at)}</p>
-          {decision.note && (
-            <p className="mt-2 text-sm leading-relaxed text-zinc-600">{decision.note}</p>
+      {rejected ? (
+        <div className="mt-4">
+          <Button type="button" variant="danger" className="w-full" disabled aria-disabled>
+            <XCircle className="h-4 w-4" aria-hidden />
+            ปฏิเสธ
+          </Button>
+        </div>
+      ) : approved ? (
+        <div className="mt-4 space-y-2">
+          <Button type="button" className="w-full bg-green-600 hover:bg-green-600" disabled aria-disabled>
+            <CheckCircle className="h-4 w-4" aria-hidden />
+            อนุมัติแล้ว
+          </Button>
+          {meta?.at && (
+            <p className="text-center text-xs text-zinc-500">{formatShortDate(meta.at)}</p>
+          )}
+          {meta?.note && (
+            <p className="rounded-xl border border-green-100 bg-green-50/50 px-3 py-2 text-sm leading-relaxed text-green-800">
+              {meta.note}
+            </p>
           )}
         </div>
       ) : actionable ? (
@@ -81,38 +103,32 @@ export function ManagerActions({ ticket, onApprove, onReject }: ManagerActionsPr
         <p className="mt-4 text-center text-xs text-zinc-500">คำร้องนี้ยังไม่ถึงขั้นตอนอนุมัติ</p>
       )}
 
-      {rejectOpen && (
-        <div className="mt-4 space-y-2 rounded-xl border border-zinc-200/80 bg-white p-3">
-          <Textarea
-            label="เหตุผลการปฏิเสธ"
-            value={reason}
-            onChange={(e) => {
-              setReason(e.target.value);
-              if (error) setError("");
-            }}
-            placeholder="ระบุเหตุผลที่ปฏิเสธคำร้อง..."
-            rows={3}
-            error={error}
-          />
-          <div className="flex gap-2">
-            <Button type="button" variant="danger" className="flex-1" onClick={handleReject}>
-              ยืนยันปฏิเสธ
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="flex-1"
-              onClick={() => {
-                setRejectOpen(false);
-                setReason("");
-                setError("");
-              }}
-            >
-              ยกเลิก
-            </Button>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        open={rejectOpen}
+        title="ปฏิเสธคำร้อง"
+        description="กรุณาระบุเหตุผล — ผู้ยื่นจะเห็นในคอมเมนต์"
+        confirmLabel="ยืนยัน"
+        cancelLabel="ยกเลิก"
+        variant="danger"
+        onConfirm={handleReject}
+        onCancel={() => {
+          setRejectOpen(false);
+          setReason("");
+          setError("");
+        }}
+      >
+        <Textarea
+          label="เหตุผลการปฏิเสธ"
+          value={reason}
+          onChange={(e) => {
+            setReason(e.target.value);
+            if (error) setError("");
+          }}
+          placeholder="ระบุเหตุผลที่ปฏิเสธคำร้อง..."
+          rows={4}
+          error={error}
+        />
+      </ConfirmModal>
 
       <ConfirmModal
         open={approveOpen}

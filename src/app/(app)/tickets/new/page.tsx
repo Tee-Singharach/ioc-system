@@ -16,8 +16,8 @@ export default function NewTicketPage() {
         description="เลือกแผนกและกรอกข้อมูลให้ครบ"
       />
       <TicketForm
-        onSubmit={(data) => {
-          const ticket = createTicket(data);
+        onSubmit={async (data) => {
+          const ticket = await createTicket(data);
           router.push(`/tickets/${ticket.id}`);
         }}
         onCancel={() => router.push("/tickets")}

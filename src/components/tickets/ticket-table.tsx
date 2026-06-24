@@ -57,7 +57,7 @@ export function TicketTable({ tickets, hrefPrefix = "/tickets", emptyHint }: Tic
                   <p className="truncate font-medium text-zinc-900">{ticket.title}</p>
                 </td>
                 <td className="px-5 py-4">
-                  <StatusBadge status={ticket.status} />
+                  <StatusBadge status={ticket.status} receivedById={ticket.receivedById} />
                 </td>
                 <td className="px-5 py-4">
                   <PriorityBadge priority={ticket.priority} />

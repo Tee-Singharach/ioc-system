@@ -2,7 +2,7 @@
 
 import type { Priority } from "@/lib/types/ticket";
 import { PRIORITIES } from "@/lib/types/ticket";
-import { MOCK_DEPARTMENTS } from "@/lib/mock/data";
+import { useCatalog } from "@/providers/catalog-provider";
 import { Search } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import type { WorkflowFilterTab } from "@/lib/ticket-workflow";
@@ -31,6 +31,8 @@ export function TicketFilterBar({
   onDepartmentChange,
   onPriorityChange,
 }: TicketFilterBarProps) {
+  const { departments } = useCatalog();
+
   return (
     <div className="space-y-4 border-b border-zinc-100 bg-zinc-50/40 px-4 py-4 sm:px-5">
       <TicketStatusTabs
@@ -61,7 +63,7 @@ export function TicketFilterBar({
             className="min-w-0 flex-1 sm:w-36"
             options={[
               { value: "", label: "ทุกฝ่าย" },
-              ...MOCK_DEPARTMENTS.map((d) => ({ value: d.id, label: d.name })),
+              ...departments.map((d) => ({ value: d.id, label: d.name })),
             ]}
           />
           <Select

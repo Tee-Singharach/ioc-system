@@ -50,7 +50,7 @@ export default function ManagerApprovalsContent() {
                   <Link href={`/manager/tickets/${ticket.id}`} className="block min-w-0 hover:opacity-90">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-sm font-semibold text-blue-600">{ticket.ticketNo}</span>
-                      <StatusBadge status={ticket.status} />
+                      <StatusBadge status={ticket.status} receivedById={ticket.receivedById} />
                       <PriorityBadge priority={ticket.priority} />
                     </div>
                     <p className="mt-1 truncate font-medium text-zinc-900">{ticket.title}</p>

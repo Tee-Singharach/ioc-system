@@ -10,36 +10,10 @@ export type TicketStatus =
 
 export type Priority = "ต่ำ" | "ปานกลาง" | "สูง" | "เร่งด่วน";
 
-export type RecommendedAction =
-  | "repair_onsite"
-  | "replace_part"
-  | "external_repair"
-  | "replace_device"
-  | "proceed"
-  | "other";
-
-/** @deprecated ข้อมูลเก่า — อ่านอย่างเดียว */
-export interface RequestLineItem {
-  name: string;
-  quantity: string;
-  unit?: string;
-}
-
-/** ชนิด + จำนวน + รายละเอียดต่อหน่วย (เช่น คอมพิวเตอร์ 2 เครื่อง) */
-export interface RequestItemGroup {
-  itemName: string;
-  quantity: string;
-  unit?: string;
-  units: Record<string, string>[];
-}
-
 export interface TicketEvaluation {
   diagnosis: string;
-  /** @deprecated ข้อมูลเก่า — ไม่ใช้ในฟอร์มใหม่ */
-  recommendedAction?: RecommendedAction;
-  estimatedCost?: number;
+  estimatedCost?: number | null;
   notes?: string;
-  details?: Record<string, string | number | RequestItemGroup>;
   evaluatedAt: string;
   evaluatedById: string;
   evaluatedByName: string;
@@ -51,11 +25,6 @@ export interface User {
   name: string;
   role: UserRole;
   departmentId: string;
-}
-
-export interface Department {
-  id: string;
-  name: string;
 }
 
 export interface Attachment {
@@ -99,9 +68,6 @@ export interface Ticket {
   status: TicketStatus;
   departmentId: string;
   departmentName: string;
-  categoryId?: string;
-  categoryLabel?: string;
-  requestDetails?: Record<string, string | number | RequestLineItem[] | RequestItemGroup>;
   requesterDepartmentId?: string;
   requesterDepartmentName?: string;
   requesterId: string;
@@ -122,19 +88,7 @@ export interface Ticket {
   updatedAt: string;
 }
 
-export const TICKET_STATUSES: TicketStatus[] = [
-  "รอรับเรื่อง",
-  "รออนุมัติ",
-  "กำลังดำเนินการ",
-  "เสร็จสมบูรณ์",
-  "ปฏิเสธ",
-  "ยกเลิก",
-];
-
 export const PRIORITIES: Priority[] = ["ต่ำ", "ปานกลาง", "สูง", "เร่งด่วน"];
-
-/** Officer ปิดงานได้เมื่อดำเนินการเสร็จแล้วเท่านั้น */
-export const OFFICER_COMPLETABLE_STATUS: TicketStatus = "เสร็จสมบูรณ์";
 
 export interface TicketFormData {
   title: string;
@@ -145,9 +99,3 @@ export interface TicketFormData {
   scheduledEndAt: string;
   attachmentNames: string[];
 }
-
-/** @deprecated ฟอร์มรวม — ไม่ใช้ฟิลด์ตามหมวดแล้ว */
-export type TicketFormInitialDetails = Record<
-  string,
-  string | number | RequestLineItem[] | RequestItemGroup
->;

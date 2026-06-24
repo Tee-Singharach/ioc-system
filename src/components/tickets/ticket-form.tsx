@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 import { File, FileText, Image, Upload, X } from "lucide-react";
 import type { Priority, TicketFormData } from "@/lib/types/ticket";
 import { PRIORITIES } from "@/lib/types/ticket";
-import { MOCK_DEPARTMENTS } from "@/lib/mock/data";
+import { useCatalog } from "@/providers/catalog-provider";
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from "@/lib/datetime-local";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -49,10 +49,9 @@ export function TicketForm({
   onCancel,
 }: TicketFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { departments } = useCatalog();
 
-  const [departmentId, setDepartmentId] = useState(
-    initialData?.departmentId ?? MOCK_DEPARTMENTS[0].id,
-  );
+  const [departmentId, setDepartmentId] = useState(initialData?.departmentId ?? "");
   const [title, setTitle] = useState(initialData?.title ?? "");
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [priority, setPriority] = useState<Priority>(initialData?.priority ?? "ปานกลาง");
@@ -67,6 +66,11 @@ export function TicketForm({
   );
   const [dragActive, setDragActive] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (departmentId || !departments.length) return;
+    setDepartmentId(initialData?.departmentId ?? departments[0].id);
+  }, [departments, departmentId, initialData?.departmentId]);
 
   function addFiles(files: File[]) {
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
@@ -142,7 +146,7 @@ export function TicketForm({
               required
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
-              options={MOCK_DEPARTMENTS.map((d) => ({ value: d.id, label: d.name }))}
+              options={departments.map((d) => ({ value: d.id, label: d.name }))}
               className={FORM_FIELD_CLASS}
             />
           </FormSection>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, Settings } from "lucide-react";
-import { MOCK_DEPARTMENTS } from "@/lib/mock/data";
+import { useCatalog } from "@/providers/catalog-provider";
 import { userInitials } from "@/lib/ticket-progress";
 import type { User, UserRole } from "@/lib/types/ticket";
 
@@ -22,9 +22,10 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 export function SidebarBottom({ user, onLogout, onNavigate }: SidebarBottomProps) {
   const pathname = usePathname();
+  const { departments } = useCatalog();
   const settingsActive = pathname === "/settings";
   const departmentName =
-    MOCK_DEPARTMENTS.find((d) => d.id === user?.departmentId)?.name ?? "—";
+    departments.find((d) => d.id === user?.departmentId)?.name ?? "—";
 
   return (
     <div className="shrink-0 space-y-4 border-t border-zinc-100 bg-white p-4">

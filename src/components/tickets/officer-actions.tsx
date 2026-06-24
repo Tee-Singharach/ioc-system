@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AlertTriangle, CheckCircle, ClipboardCheck, Play, Send } from "lucide-react";
 import type { Ticket, TicketEvaluation } from "@/lib/types/ticket";
-import { MOCK_DEPARTMENTS, MOCK_OFFICERS } from "@/lib/mock/data";
+import { useCatalog } from "@/providers/catalog-provider";
 import { hasCompleteEvaluation } from "@/lib/ticket-evaluation";
 import {
   canAssign,
@@ -79,10 +79,7 @@ export function OfficerActions({
   const [completeSummary, setCompleteSummary] = useState("");
   const [completeError, setCompleteError] = useState("");
 
-  const officersWithDept = MOCK_OFFICERS.map((o) => {
-    const dept = MOCK_DEPARTMENTS.find((d) => d.id === o.departmentId);
-    return { ...o, departmentName: dept?.name ?? "" };
-  });
+  const { officers: officersWithDept } = useCatalog();
 
   const step = workflowStepIndex(ticket);
   const stepMeta = TICKET_WORKFLOW_STEPS[step];
