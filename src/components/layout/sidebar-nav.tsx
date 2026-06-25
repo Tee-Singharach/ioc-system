@@ -14,7 +14,7 @@ import {
   ScrollText,
   Users,
 } from "lucide-react";
-import { getInboxPendingTickets, getOfficerTickets } from "@/lib/officer-access";
+import { getInboxPendingTickets } from "@/lib/officer-access";
 import { getPendingApprovalTickets } from "@/lib/manager-access";
 import type { User } from "@/lib/types/ticket";
 import { useMockAuth } from "@/providers/mock-auth-provider";
@@ -42,17 +42,30 @@ const adminNavItems = [
   { href: "/admin/audit-logs", label: "Audit log", icon: ScrollText },
 ];
 
-function isActive(href: string, pathname: string) {
+function managerTicketId(pathname: string) {
+  const m = pathname.match(/^\/manager\/tickets\/([^/]+)$/);
+  return m?.[1] ?? null;
+}
+
+function isActive(href: string, pathname: string, managerTicketStatus?: string) {
   if (href === "/tickets/new") return pathname === "/tickets/new";
-  if (href === "/officer/inbox") return pathname === "/officer/inbox";
+  if (href === "/officer/inbox") {
+    return pathname === "/officer/inbox" || /^\/officer\/inbox\/[^/]+$/.test(pathname);
+  }
   if (href === "/officer/tickets") {
     return pathname === "/officer/tickets" || /^\/officer\/tickets\/[^/]+$/.test(pathname);
   }
   if (href === "/manager/dashboard") return pathname === "/manager/dashboard";
   if (href === "/manager/approvals") {
-    return pathname === "/manager/approvals" || /^\/manager\/tickets\/[^/]+$/.test(pathname);
+    if (pathname === "/manager/approvals") return true;
+    const id = managerTicketId(pathname);
+    return id != null && managerTicketStatus === "รออนุมัติ";
   }
-  if (href === "/manager/history") return pathname === "/manager/history";
+  if (href === "/manager/history") {
+    if (pathname === "/manager/history") return true;
+    const id = managerTicketId(pathname);
+    return id != null && managerTicketStatus !== "รออนุมัติ";
+  }
   if (href === "/admin/users") return pathname === "/admin/users";
   if (href === "/admin/departments") return pathname === "/admin/departments";
   if (href === "/admin/audit-logs") return pathname === "/admin/audit-logs";
@@ -105,11 +118,13 @@ function NavList({
   pathname,
   badgeFor,
   onNavigate,
+  managerTicketStatus,
 }: {
   items: typeof staffNavItems;
   pathname: string;
   badgeFor?: (href: string) => number | undefined;
   onNavigate?: () => void;
+  managerTicketStatus?: string;
 }) {
   return (
     <>
@@ -117,7 +132,7 @@ function NavList({
         <NavLink
           key={item.href}
           {...item}
-          active={isActive(item.href, pathname)}
+          active={isActive(item.href, pathname, managerTicketStatus)}
           badge={badgeFor?.(item.href)}
           onNavigate={onNavigate}
         />
@@ -136,20 +151,17 @@ function OfficerSidebarLinks({
   onNavigate?: () => void;
 }) {
   const tickets = useTickets();
-  const badges = useMemo(() => {
-    const pending = getInboxPendingTickets(tickets, user).length;
-    const all = getOfficerTickets(tickets, user).length;
-    return { inbox: pending, all };
-  }, [tickets, user]);
+  const inboxPending = useMemo(
+    () => getInboxPendingTickets(tickets, user).length,
+    [tickets, user],
+  );
 
   return (
     <NavList
       items={officerNavItems}
       pathname={pathname}
       onNavigate={onNavigate}
-      badgeFor={(href) =>
-        href === "/officer/inbox" ? badges.inbox : href === "/officer/tickets" ? badges.all : undefined
-      }
+      badgeFor={(href) => (href === "/officer/inbox" ? inboxPending : undefined)}
     />
   );
 }
@@ -169,11 +181,17 @@ function ManagerSidebarLinks({
     [tickets, user],
   );
 
+  const detailId = managerTicketId(pathname);
+  const managerTicketStatus = detailId
+    ? tickets.find((t) => t.id === detailId)?.status
+    : undefined;
+
   return (
     <NavList
       items={managerNavItems}
       pathname={pathname}
       onNavigate={onNavigate}
+      managerTicketStatus={managerTicketStatus}
       badgeFor={(href) => (href === "/manager/approvals" ? pending : undefined)}
     />
   );

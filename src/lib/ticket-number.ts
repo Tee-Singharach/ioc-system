@@ -13,14 +13,14 @@ export function departmentCode(shortName: string | null | undefined, id: string)
   return code || "GEN";
 }
 
-/** ดึงเลขรันจาก prefix {DEPT}-{YYYYMMDD}- */
+/** ดึงเลขรันจาก prefix {DEPT}-{YYYYMMDD}- (รองรับทั้งเลขไม่เติมศูนย์และเลขเก่าแบบเติมศูนย์) */
 export function parseTicketSeq(ticketNo: string, prefix: string): number | null {
-  const suffixRe = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d{3})$`);
+  const suffixRe = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\d+)$`);
   const m = ticketNo.match(suffixRe);
   return m ? Number.parseInt(m[1], 10) : null;
 }
 
-/** แผนกผู้ยื่น + วันที่ยื่น + เลขรันต่อแผนกต่อวัน (เช่น IT-20260619-001) */
+/** แผนกผู้ยื่น + วันที่ยื่น + เลขรันต่อแผนกต่อวัน (เช่น IT-20260619-1) */
 export async function nextTicketNo(requesterDepartmentId: string, at: Date = new Date()): Promise<string> {
   const dept = await prisma.department.findUnique({
     where: { id: requesterDepartmentId },
@@ -43,8 +43,7 @@ export async function nextTicketNo(requesterDepartmentId: string, at: Date = new
     if (seq != null) max = Math.max(max, seq);
   }
 
-  // ponytail: >999/แผนก/วัน → ขยายหลักหรือ error ชัดเจน
-  return `${prefix}${String(max + 1).padStart(3, "0")}`;
+  return `${prefix}${max + 1}`;
 }
 
 if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
@@ -53,7 +52,7 @@ if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
   }
   if (departmentCode("IT", "dept-it") !== "IT") throw new Error("ticket-number: dept code");
 
-  const samples = ["IT-20260618-001", "IT-20260618-002", "IT-20260619-001"];
+  const samples = ["IT-20260618-001", "IT-20260618-2", "IT-20260619-999", "IT-20260619-1000"];
   let max18 = 0;
   let max19 = 0;
   for (const ticketNo of samples) {
@@ -62,5 +61,5 @@ if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
     const s19 = parseTicketSeq(ticketNo, "IT-20260619-");
     if (s19 != null) max19 = Math.max(max19, s19);
   }
-  if (max18 !== 2 || max19 !== 1) throw new Error("ticket-number: daily seq per prefix");
+  if (max18 !== 2 || max19 !== 1000) throw new Error("ticket-number: daily seq per prefix");
 }

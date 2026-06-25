@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Shield } from "lucide-react";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminSearch } from "@/components/admin/admin-search";
 import { FilterPills } from "@/components/admin/filter-pills";
 import { ListPagination } from "@/components/admin/list-pagination";
@@ -21,12 +20,15 @@ import type { AuditLogEntry } from "@/lib/types/admin";
 import { formatRelativeTime, userInitials } from "@/lib/ticket-progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
+import { ListEmptyState } from "@/components/ui/list-empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 
 const DEFAULT_PAGE_SIZE = 15;
 
 export default function AdminAuditLogsContent() {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<AuditCategory>("all");
   const [page, setPage] = useState(1);
@@ -34,9 +36,12 @@ export default function AdminAuditLogsContent() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const logs = await fetchAuditLogs();
       setAuditLogs(logs);
+    } catch {
+      setLoadError("โหลดบันทึกไม่สำเร็จ กรุณาลองใหม่");
     } finally {
       setLoading(false);
     }
@@ -91,8 +96,7 @@ export default function AdminAuditLogsContent() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        icon={Shield}
+      <PageHeader
         title="Audit Log"
         description={`บันทึกกิจกรรมทั้งหมดในระบบ · ${auditLogs.length} รายการ`}
         actions={
@@ -129,13 +133,27 @@ export default function AdminAuditLogsContent() {
         <CardBody className="p-0">
           {loading && auditLogs.length === 0 ? (
             <p className="px-6 py-16 text-center text-sm text-zinc-500">กำลังโหลดบันทึก...</p>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center px-6 py-16 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-300">
-                <Shield className="h-8 w-8" strokeWidth={1.5} aria-hidden />
+          ) : loadError ? (
+            <div className="space-y-4">
+              <ListEmptyState icon={Shield} title={loadError} />
+              <div className="flex justify-center pb-8">
+                <Button type="button" variant="secondary" onClick={() => void load()}>
+                  ลองอีกครั้ง
+                </Button>
               </div>
-              <p className="mt-5 text-sm font-medium text-zinc-700">ไม่พบบันทึก</p>
             </div>
+          ) : filtered.length === 0 && auditLogs.length > 0 ? (
+            <ListEmptyState
+              icon={Shield}
+              title="ไม่พบบันทึกที่ตรงกับตัวกรอง"
+              description="ลองเปลี่ยนคำค้นหาหรือหมวดหมู่"
+            />
+          ) : filtered.length === 0 ? (
+            <ListEmptyState
+              icon={Shield}
+              title="ยังไม่มีบันทึก"
+              description="กิจกรรมในระบบจะแสดงที่นี่"
+            />
           ) : (
             <ul className="divide-y divide-zinc-100">
               {paginated.map(({ log, cat }) => (

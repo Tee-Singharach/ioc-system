@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { ClipboardCheck } from "lucide-react";
 import { getPendingApprovalTickets } from "@/lib/manager-access";
-import { formatShortDate } from "@/lib/ticket-progress";
+import { formatDateTime } from "@/lib/ticket-progress";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
@@ -56,7 +56,7 @@ export default function ManagerApprovalsContent() {
                     <p className="mt-1 truncate font-medium text-zinc-900">{ticket.title}</p>
                     <p className="mt-0.5 text-sm text-zinc-500">
                       {ticket.requesterName} · {ticket.assigneeName ?? ticket.receivedByName ?? "—"} · กำหนด{" "}
-                      {formatShortDate(ticket.scheduledEndAt)}
+                      {formatDateTime(ticket.scheduledEndAt)}
                     </p>
                   </Link>
                 </li>

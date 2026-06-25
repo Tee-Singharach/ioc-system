@@ -120,12 +120,6 @@ async function main() {
       { id: "dept-hr", name: "ทรัพยากรบุคคล", shortName: "HR" },
       { id: "dept-finance", name: "การเงิน", shortName: "Finance" },
       { id: "dept-admin", name: "บริหารทั่วไป", shortName: "Admin" },
-      {
-        id: "dept-old",
-        name: "แผนกเลิกใช้ (ตัวอย่าง)",
-        shortName: "Old",
-        deletedAt: d("2024-05-20T11:00:00Z"),
-      },
     ],
   });
 
@@ -200,7 +194,7 @@ async function main() {
         username: "staff_legacy",
         name: "ผู้ใช้เก่า (ตัวอย่าง soft delete)",
         role: "staff",
-        departmentId: "dept-old",
+        departmentId: "dept-it",
         passwordHash,
         deletedAt: d("2024-06-05T09:15:00Z"),
       },
@@ -211,7 +205,7 @@ async function main() {
   await prisma.ticket.create({
     data: {
       id: "tkt-ex-01",
-      ticketNo: "IT-20260619-001",
+      ticketNo: "IT-20260619-1",
       title: "คอมพิวเตอร์เปิดไม่ติด",
       description: "คอมพิวเตอร์ตั้งโต๊ะชั้น 3 เปิดไม่ติด ไฟ power ไม่เข้า\nแผนก: IT",
       priority: "HIGH",
@@ -228,7 +222,7 @@ async function main() {
   await prisma.ticket.create({
     data: {
       id: "tkt-ex-02",
-      ticketNo: "IT-20260618-001",
+      ticketNo: "IT-20260618-1",
       title: "ขอติดตั้งโปรแกรมใหม่",
       description: "ต้องการติดตั้ง Adobe Acrobat บนเครื่องใหม่",
       priority: "MEDIUM",
@@ -256,7 +250,7 @@ async function main() {
   await prisma.ticket.create({
     data: {
       id: "tkt-ex-03",
-      ticketNo: "IT-20260617-001",
+      ticketNo: "IT-20260617-1",
       title: "เครื่องพิมพ์ติดกระดาษ",
       description: "เครื่องพิมพ์ชั้น 2 ติดกระดาษบ่อย ต้องการตรวจซ่อม",
       priority: "HIGH",
@@ -298,7 +292,7 @@ async function main() {
   await prisma.ticket.create({
     data: {
       id: "tkt-ex-04",
-      ticketNo: "IT-20260614-001",
+      ticketNo: "IT-20260614-1",
       title: "อัปเกรด RAM เครื่องทำงาน",
       description: "เครื่องช้า ขอเพิ่ม RAM เป็น 16GB",
       priority: "MEDIUM",
@@ -351,7 +345,7 @@ async function main() {
   await prisma.ticket.create({
     data: {
       id: "tkt-ex-05",
-      ticketNo: "IT-20260608-001",
+      ticketNo: "IT-20260608-1",
       title: "ขอเบิกกระดาษ A4",
       description: "ขอเบิกกระดาษ A4 จำนวน 5 รีม สำหรับงานธุรการ",
       priority: "LOW",
@@ -408,7 +402,7 @@ async function main() {
   await prisma.ticket.create({
     data: {
       id: "tkt-ex-06",
-      ticketNo: "HR-20260613-001",
+      ticketNo: "HR-20260613-1",
       title: "ขอเปลี่ยนกะการทำงานชั่วคราว",
       description: "ขอเปลี่ยนกะเดือนกรกฎาคม เนื่องจากเรียนต่อ",
       priority: "MEDIUM",
@@ -460,7 +454,7 @@ async function main() {
   await prisma.ticket.create({
     data: {
       id: "tkt-ex-07",
-      ticketNo: "HR-20260619-001",
+      ticketNo: "HR-20260619-1",
       title: "ขอลาพักร้อน 3 วัน",
       description: "ขอลาพักร้อนวันที่ 25-27 มิ.ย. 2569",
       priority: "MEDIUM",
@@ -477,7 +471,7 @@ async function main() {
   await prisma.ticket.create({
     data: {
       id: "tkt-ex-08",
-      ticketNo: "HR-20260618-001",
+      ticketNo: "HR-20260618-1",
       title: "ขอสิทธิ์เข้าโฟลเดอร์แชร์",
       description: "ขอสิทธิ์อ่าน/เขียนโฟลเดอร์ Finance-Q2",
       priority: "MEDIUM",
@@ -516,7 +510,7 @@ async function main() {
   await seedAuditLogsFromTickets();
 
   console.log("Seed OK — บัญชีทดสอบ: staff1 / officer1 / manager1 / admin1 (รหัสผ่าน: password123)");
-  console.log("คำร้องตัวอย่าง: IT-20260619-001, HR-20260619-001 ฯลฯ (แผนกผู้ยื่น-วันที่-เลขรัน)");
+  console.log("คำร้องตัวอย่าง: IT-20260619-1, HR-20260619-1 ฯลฯ (แผนกผู้ยื่น-วันที่-เลขรัน)");
   console.log("เจ้าหน้าที่ IT: กล่องงาน → งานของฉัน มีตัวอย่างครบทุกขั้น workflow");
 }
 

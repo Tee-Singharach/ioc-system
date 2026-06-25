@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { TicketAttachmentList } from "@/components/tickets/ticket-attachment-list";
 import { canManagerViewTicket, getApprovalDecision } from "@/lib/manager-access";
-import { formatShortDate, isTicketOverdue, userInitials } from "@/lib/ticket-progress";
+import { canApprove } from "@/lib/manager-rules";
+import { formatDateTime, isTicketOverdue, userInitials } from "@/lib/ticket-progress";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
 import { ManagerActions } from "@/components/tickets/manager-actions";
@@ -68,6 +69,7 @@ export default function ManagerTicketDetailPage({ params }: { params: Promise<{ 
   const responsible = ticket.assigneeName ?? ticket.receivedByName ?? "—";
   const overdue = isTicketOverdue(ticket);
   const backHref = ticket.status === "รออนุมัติ" ? "/manager/approvals" : "/manager/history";
+  const showManagerActions = canApprove(ticket);
 
   return (
     <div className="space-y-6">
@@ -91,7 +93,11 @@ export default function ManagerTicketDetailPage({ params }: { params: Promise<{ 
         </h1>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_17rem] lg:items-start">
+      <div
+        className={
+          showManagerActions ? "grid gap-6 lg:grid-cols-[1fr_17rem] lg:items-start" : "space-y-6"
+        }
+      >
         <div className="min-w-0 space-y-6">
           <Card>
             <CardBody className="space-y-6 p-5 sm:p-6">
@@ -119,15 +125,21 @@ export default function ManagerTicketDetailPage({ params }: { params: Promise<{ 
                 <div>
                   <p className="text-xs font-medium text-zinc-500">วันที่สร้าง</p>
                   <p className="mt-1.5 text-sm font-medium text-zinc-900">
-                    {formatShortDate(ticket.createdAt)}
+                    {formatDateTime(ticket.createdAt)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-zinc-500">วันกำหนด</p>
+                  <p className="text-xs font-medium text-zinc-500">เริ่มต้น</p>
+                  <p className="mt-1.5 text-sm font-medium text-zinc-900">
+                    {formatDateTime(ticket.scheduledStartAt)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500">สิ้นสุด</p>
                   <p
                     className={`mt-1.5 text-sm font-medium ${overdue ? "text-red-600" : "text-zinc-900"}`}
                   >
-                    {formatShortDate(ticket.scheduledEndAt)}
+                    {formatDateTime(ticket.scheduledEndAt)}
                   </p>
                 </div>
               </div>
@@ -169,17 +181,19 @@ export default function ManagerTicketDetailPage({ params }: { params: Promise<{ 
           </Card>
         </div>
 
-        <ManagerActions
-          ticket={ticket}
-          onApprove={() => {
-            approveTicket(ticket.id);
-            router.push("/manager/history");
-          }}
-          onReject={(reason) => {
-            rejectTicket(ticket.id, reason);
-            router.push("/manager/history");
-          }}
-        />
+        {showManagerActions && (
+          <ManagerActions
+            ticket={ticket}
+            onApprove={() => {
+              approveTicket(ticket.id);
+              router.push("/manager/history");
+            }}
+            onReject={(reason) => {
+              rejectTicket(ticket.id, reason);
+              router.push("/manager/history");
+            }}
+          />
+        )}
       </div>
     </div>
   );

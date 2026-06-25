@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, MoreVertical, Pencil, XCircle } from "lucide-react";
 import { TicketAttachmentList } from "@/components/tickets/ticket-attachment-list";
 import { canCancel, canEdit } from "@/lib/ticket-rules";
-import { formatShortDate, userInitials } from "@/lib/ticket-progress";
+import { formatDateTime, userInitials } from "@/lib/ticket-progress";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
 import { StatusBadge } from "@/components/tickets/status-badge";
@@ -175,13 +175,19 @@ export default function StaffTicketDetailPage({ params }: { params: Promise<{ id
                 <div>
                   <p className="text-xs font-medium text-zinc-500">วันที่สร้าง</p>
                   <p className="mt-1.5 text-sm font-medium text-zinc-900">
-                    {formatShortDate(ticket.createdAt)}
+                    {formatDateTime(ticket.createdAt)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-zinc-500">วันกำหนด</p>
+                  <p className="text-xs font-medium text-zinc-500">เริ่มต้น</p>
                   <p className="mt-1.5 text-sm font-medium text-zinc-900">
-                    {formatShortDate(ticket.scheduledEndAt)}
+                    {formatDateTime(ticket.scheduledStartAt)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500">สิ้นสุด</p>
+                  <p className="mt-1.5 text-sm font-medium text-zinc-900">
+                    {formatDateTime(ticket.scheduledEndAt)}
                   </p>
                 </div>
               </div>

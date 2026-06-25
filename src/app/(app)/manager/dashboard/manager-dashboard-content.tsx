@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 import {
   getLatestDepartmentTickets,
   getManagerDashboardBlock,
   getStatusDistribution,
   getTicketActivitySeries,
 } from "@/lib/manager-dashboard";
-import { formatShortDate } from "@/lib/ticket-progress";
+import { formatDateTime } from "@/lib/ticket-progress";
 import { TICKET_WORKFLOW_STEPS, workflowStepIndex } from "@/lib/ticket-workflow";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
@@ -19,6 +20,7 @@ import {
 } from "@/components/manager/dashboard-charts";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { Card, CardBody } from "@/components/ui/card";
+import { ListEmptyState } from "@/components/ui/list-empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 
 export default function ManagerDashboardContent() {
@@ -82,7 +84,11 @@ export default function ManagerDashboardContent() {
             </Link>
           </div>
           {latest.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-zinc-500">ยังไม่มีคำร้องในแผนก</p>
+            <ListEmptyState
+              icon={ClipboardList}
+              title="ยังไม่มีคำร้องในแผนก"
+              description="คำร้องในแผนกจะแสดงที่นี่"
+            />
           ) : (
             <ul>
               {latest.map((ticket) => {
@@ -103,7 +109,7 @@ export default function ManagerDashboardContent() {
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
-                      <time className="text-xs text-zinc-400">{formatShortDate(ticket.updatedAt)}</time>
+                      <time className="text-xs text-zinc-400">{formatDateTime(ticket.updatedAt)}</time>
                       <StatusBadge status={ticket.status} receivedById={ticket.receivedById} />
                     </div>
                   </Link>

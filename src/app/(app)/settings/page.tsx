@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/ui/page-header";
 const ROLE_LABELS: Record<UserRole, string> = {
   staff: "พนักงาน",
   officer: "เจ้าหน้าที่",
-  manager: "ผู้จัดการ",
+  manager: "หัวหน้า",
   admin: "ผู้ดูแลระบบ",
 };
 
@@ -107,7 +107,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="ตั้งค่า"
+        title="การตั้งค่า"
         description="จัดการโปรไฟล์และความปลอดภัยของบัญชี"
       />
 

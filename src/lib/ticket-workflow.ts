@@ -1,10 +1,13 @@
 import type { StatusHistoryEntry, Ticket, TicketStatus } from "@/lib/types/ticket";
 
+/** ป้าย UI สำหรับสถานะ DB `รออนุมัติ` */
+export const PENDING_APPROVAL_LABEL = "รอหัวหน้าอนุมัติ";
+
 /** 5 ขั้นบน stepper (ขั้น 1–2 ใช้สถานะ DB เดียวกัน รอรับเรื่อง) */
 export const TICKET_WORKFLOW_STEPS = [
   { id: "new", label: "คำร้องใหม่" },
   { id: "evaluating", label: "กำลังประเมิน" },
-  { id: "pending_approval", label: "รออนุมัติ" },
+  { id: "pending_approval", label: PENDING_APPROVAL_LABEL },
   { id: "in_progress", label: "กำลังดำเนินการ" },
   { id: "done", label: "เสร็จสิ้น" },
 ] as const;
@@ -27,7 +30,7 @@ const WORKFLOW_PRIMARY_FILTER_TABS: {
   { id: "all", label: "ทั้งหมด" },
   { id: "new", label: "คำร้องใหม่" },
   { id: "evaluating", label: "กำลังประเมิน" },
-  { id: "pending_approval", label: "รออนุมัติ" },
+  { id: "pending_approval", label: PENDING_APPROVAL_LABEL },
   { id: "in_progress", label: "กำลังดำเนินการ" },
   { id: "done", label: "เสร็จสิ้น" },
 ];
@@ -130,6 +133,7 @@ function historyStepIndex(entry: StatusHistoryEntry): number {
 /** ป้ายสถานะบน UI — ขั้นประเมินใช้สถานะ DB เดิม + receivedById */
 export function workflowStatusLabel(ticket: Pick<Ticket, "status" | "receivedById">): string {
   if (ticket.status === "รอรับเรื่อง" && ticket.receivedById) return "กำลังประเมิน";
+  if (ticket.status === "รออนุมัติ") return PENDING_APPROVAL_LABEL;
   return ticket.status;
 }
 
@@ -140,7 +144,7 @@ export function staffWorkflowHint(ticket: Pick<Ticket, "status" | "receivedById"
   if (ticket.status === "รอรับเรื่อง" && ticket.receivedById) {
     return "เจ้าหน้าที่กำลังตรวจสอบและประเมิน";
   }
-  if (ticket.status === "รออนุมัติ") return "รอหัวหน้าอนุมัติ";
+  if (ticket.status === "รออนุมัติ") return PENDING_APPROVAL_LABEL;
   if (ticket.status === "กำลังดำเนินการ") return "เจ้าหน้าที่กำลังดำเนินการ";
   if (ticket.status === "เสร็จสมบูรณ์") return "ดำเนินการเสร็จสิ้นแล้ว";
   return null;
@@ -154,6 +158,10 @@ export type WorkflowTimelineStep = {
   id: (typeof TICKET_WORKFLOW_STEPS)[number]["id"];
   label: string;
   at: string | null;
+  /** ข้อความใต้ชื่อขั้น — สะท้อนผลลัพธ์จริง (ผ่านการประเมิน / อนุมัติ / ปฏิเสธ) */
+  caption: string | null;
+  /** เวลาที่จับคู่กับ caption */
+  displayAt: string | null;
   note?: string;
   state: "done" | "current" | "upcoming" | "rejected";
 };
@@ -174,6 +182,57 @@ function firstHistoryEntry(
   return history.find(pred);
 }
 
+function isApprovalNote(note?: string) {
+  return !!note?.includes("อนุมัติ");
+}
+
+function stepCaptionAndTime(
+  index: number,
+  state: WorkflowTimelineStep["state"],
+  ticket: Pick<Ticket, "status" | "receivedById">,
+  milestones: {
+    createdAt: string;
+    receiveAt: string | null;
+    evalDoneAt: string | null;
+    approvalAt: string | null;
+    progressAt: string | null;
+    doneAt: string | null;
+    rejectAt: string | null;
+  },
+): { caption: string | null; displayAt: string | null } {
+  if (state === "upcoming") return { caption: null, displayAt: null };
+
+  switch (index) {
+    case 0:
+      if (state === "current" && !ticket.receivedById) {
+        return { caption: "รอรับเรื่อง", displayAt: milestones.createdAt };
+      }
+      return { caption: "รับคำร้อง", displayAt: milestones.createdAt };
+    case 1:
+      if (state === "current") {
+        return { caption: "กำลังประเมิน", displayAt: milestones.receiveAt };
+      }
+      return { caption: "ผ่านการประเมิน", displayAt: milestones.evalDoneAt };
+    case 2:
+      if (state === "rejected") {
+        return { caption: "ปฏิเสธ", displayAt: milestones.rejectAt };
+      }
+      if (state === "current") {
+        return { caption: PENDING_APPROVAL_LABEL, displayAt: milestones.approvalAt };
+      }
+      return { caption: "อนุมัติ", displayAt: milestones.progressAt };
+    case 3:
+      if (state === "current") {
+        return { caption: "กำลังดำเนินการ", displayAt: milestones.progressAt };
+      }
+      return { caption: "ดำเนินการแล้ว", displayAt: milestones.progressAt };
+    case 4:
+      return { caption: "เสร็จสิ้น", displayAt: milestones.doneAt };
+    default:
+      return { caption: null, displayAt: null };
+  }
+}
+
 /** วันที่เหตุการณ์แต่ละขั้น workflow — จาก statusHistory */
 export function buildWorkflowTimeline(
   ticket: Pick<Ticket, "status" | "receivedById" | "statusHistory" | "createdAt">,
@@ -192,15 +251,30 @@ export function buildWorkflowTimeline(
     (e) => e.status === "รอรับเรื่อง" && isReceiveNote(e.note),
   );
   const approvalEntry = firstHistoryEntry(statusHistory, (e) => e.status === "รออนุมัติ");
-  const progressEntry = firstHistoryEntry(statusHistory, (e) => e.status === "กำลังดำเนินการ");
+  const progressEntry = firstHistoryEntry(
+    statusHistory,
+    (e) => e.status === "กำลังดำเนินการ" && isApprovalNote(e.note),
+  );
+  const progressAnyEntry = firstHistoryEntry(statusHistory, (e) => e.status === "กำลังดำเนินการ");
   const doneEntry = firstHistoryEntry(statusHistory, (e) => e.status === "เสร็จสมบูรณ์");
+  const rejectEntry = firstHistoryEntry(statusHistory, (e) => e.status === "ปฏิเสธ");
+
+  const milestoneTimes = {
+    createdAt: newEntry?.at ?? createdAt,
+    receiveAt: receiveEntry?.at ?? null,
+    evalDoneAt: approvalEntry?.at ?? null,
+    approvalAt: approvalEntry?.at ?? null,
+    progressAt: progressEntry?.at ?? progressAnyEntry?.at ?? null,
+    doneAt: doneEntry?.at ?? null,
+    rejectAt: rejectEntry?.at ?? null,
+  };
 
   const milestones: { at: string | null; note?: string }[] = [
-    { at: newEntry?.at ?? createdAt, note: newEntry?.note },
-    { at: receiveEntry?.at ?? null, note: receiveEntry?.note },
-    { at: approvalEntry?.at ?? null, note: approvalEntry?.note },
-    { at: progressEntry?.at ?? null, note: progressEntry?.note },
-    { at: doneEntry?.at ?? null, note: doneEntry?.note },
+    { at: milestoneTimes.createdAt, note: newEntry?.note },
+    { at: milestoneTimes.receiveAt, note: receiveEntry?.note },
+    { at: milestoneTimes.approvalAt, note: approvalEntry?.note },
+    { at: milestoneTimes.progressAt, note: progressEntry?.note ?? progressAnyEntry?.note },
+    { at: milestoneTimes.doneAt, note: doneEntry?.note },
   ];
 
   const steps: WorkflowTimelineStep[] = TICKET_WORKFLOW_STEPS.map((step, index) => {
@@ -215,10 +289,14 @@ export function buildWorkflowTimeline(
     else if (index === currentIdx) state = "current";
     else state = "upcoming";
 
+    const { caption, displayAt } = stepCaptionAndTime(index, state, ticket, milestoneTimes);
+
     return {
       id: step.id,
       label: step.label,
       at: milestones[index]?.at ?? null,
+      caption,
+      displayAt,
       note: milestones[index]?.note,
       state,
     };
@@ -279,8 +357,11 @@ if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
     createdAt: "2026-06-17T08:00:00Z",
     statusHistory: sampleHistory,
   });
-  if (tl.steps[2]?.state !== "current" || !tl.steps[2]?.at?.startsWith("2026-06-18")) {
+  if (tl.steps[2]?.state !== "current" || tl.steps[2]?.caption !== PENDING_APPROVAL_LABEL) {
     throw new Error("ticket-workflow: timeline pending approval");
+  }
+  if (tl.steps[0]?.caption !== "รับคำร้อง" || tl.steps[1]?.caption !== "ผ่านการประเมิน") {
+    throw new Error("ticket-workflow: timeline captions past eval");
   }
   if (rejectionRejectorFromNote("วราภรณ์ ผู้จัดการ ปฏิเสธ: เต็ม") !== "วราภรณ์ ผู้จัดการ") {
     throw new Error("ticket-workflow: rejection rejector");
@@ -294,7 +375,30 @@ if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
       { status: "ปฏิเสธ", note: "ผู้จัดการ ปฏิเสธ: test", at: "2026-06-19T08:00:00Z" },
     ],
   });
-  if (rejectedTl.steps[2]?.state !== "rejected") {
+  if (rejectedTl.steps[2]?.state !== "rejected" || rejectedTl.steps[2]?.caption !== "ปฏิเสธ") {
     throw new Error("ticket-workflow: rejected at pending approval step");
+  }
+
+  const newTl = buildWorkflowTimeline({
+    status: "รอรับเรื่อง",
+    receivedById: undefined,
+    createdAt: "2026-06-17T08:00:00Z",
+    statusHistory: [{ status: "รอรับเรื่อง", at: "2026-06-17T08:00:00Z" }],
+  });
+  if (newTl.steps[0]?.caption !== "รอรับเรื่อง" || newTl.steps[1]?.caption !== null) {
+    throw new Error("ticket-workflow: new ticket captions");
+  }
+
+  const approvedTl = buildWorkflowTimeline({
+    status: "กำลังดำเนินการ",
+    receivedById: "officer-001",
+    createdAt: "2026-06-17T08:00:00Z",
+    statusHistory: [
+      ...sampleHistory,
+      { status: "กำลังดำเนินการ", note: "ผู้จัดการ อนุมัติให้ดำเนินการ", at: "2026-06-19T09:00:00Z" },
+    ],
+  });
+  if (approvedTl.steps[2]?.caption !== "อนุมัติ") {
+    throw new Error("ticket-workflow: approved caption");
   }
 }

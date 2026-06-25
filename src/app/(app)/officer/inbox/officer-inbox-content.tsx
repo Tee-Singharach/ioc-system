@@ -9,7 +9,7 @@ import {
   getOfficerAssignedTasks,
   getOfficerInProgressTasks,
 } from "@/lib/officer-access";
-import { formatShortDate } from "@/lib/ticket-progress";
+import { formatDateTime } from "@/lib/ticket-progress";
 import { TICKET_WORKFLOW_STEPS, workflowStepIndex } from "@/lib/ticket-workflow";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
@@ -17,6 +17,7 @@ import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 type InboxTab = "pending" | "mine" | "in_progress";
 
@@ -34,7 +35,7 @@ function InboxEmpty({ tab }: { tab: InboxTab }) {
       ) : tab === "mine" ? (
         <>
           <p className="mt-5 text-sm font-medium text-zinc-700">ยังไม่มีงานของคุณ</p>
-          <p className="mt-1 text-sm text-zinc-500">รับเรื่องจากแท็บงานรอรับ — งานจะอยู่ที่นี่ระหว่างประเมินและรออนุมัติ</p>
+          <p className="mt-1 text-sm text-zinc-500">รับเรื่องจากแท็บงานรอรับ — งานจะอยู่ที่นี่ระหว่างประเมินและรอหัวหน้าอนุมัติ</p>
         </>
       ) : (
         <>
@@ -68,7 +69,7 @@ function PendingRow({
         </div>
         <p className="mt-1 truncate font-medium text-zinc-900">{ticket.title}</p>
         <p className="mt-0.5 text-sm text-zinc-500">
-          {ticket.requesterName} · กำหนด {formatShortDate(ticket.scheduledEndAt)}
+          {ticket.requesterName} · กำหนด {formatDateTime(ticket.scheduledEndAt)}
         </p>
       </div>
       <Button type="button" className="shrink-0" onClick={() => onReceive(ticket.id)}>
@@ -133,12 +134,10 @@ export default function OfficerInboxContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900">กล่องงาน</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          สวัสดี {user.name} · บริหารงานของคุณ
-        </p>
-      </div>
+      <PageHeader
+        title="กล่องงาน"
+        description={`สวัสดี ${user.name} · บริหารงานของคุณ`}
+      />
 
       <div className="border-b border-zinc-200">
         <div className="flex gap-6">

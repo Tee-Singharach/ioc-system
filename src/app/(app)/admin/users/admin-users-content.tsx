@@ -7,21 +7,22 @@ import {
   KeyRound,
   Pencil,
   Plus,
+  RotateCcw,
   Shield,
   Trash2,
   UserRound,
   Users,
 } from "lucide-react";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminSearch } from "@/components/admin/admin-search";
 import { FilterPills } from "@/components/admin/filter-pills";
+import { ListPagination } from "@/components/admin/list-pagination";
 import { RoleBadge } from "@/components/admin/role-badge";
 import {
   ROLE_STAT_META,
   ROLE_TAB_LABELS,
   mockUserEmail,
 } from "@/lib/admin-ui";
-import { userInitials } from "@/lib/ticket-progress";
+import { userInitials, formatShortDate } from "@/lib/ticket-progress";
 import { actionAdminResetUserPassword } from "@/lib/actions/data";
 import type { ManagedUser } from "@/lib/types/admin";
 import type { UserRole } from "@/lib/types/ticket";
@@ -30,12 +31,16 @@ import { useMockAuth } from "@/providers/mock-auth-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { PageHeader } from "@/components/ui/page-header";
 import { CreateUserModal, type CreateUserFieldErrors } from "@/components/admin/create-user-modal";
 import { Input } from "@/components/ui/input";
 import { ModalPortal } from "@/components/ui/modal-portal";
 import { Select } from "@/components/ui/select";
 
 type RoleFilter = UserRole | "all";
+type UserView = "active" | "deleted";
+
+const DEFAULT_PAGE_SIZE = 10;
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "staff", label: ROLE_TAB_LABELS.staff },
@@ -71,18 +76,25 @@ export default function AdminUsersContent() {
   const { user } = useMockAuth();
   const {
     activeUsers,
+    deletedUsers,
     activeDepartments,
+    updateUserName,
     updateUserRole,
     updateUserDepartment,
     softDeleteUser,
+    restoreUser,
     createUser,
   } = useMockAdmin();
 
   const [search, setSearch] = useState("");
+  const [userView, setUserView] = useState<UserView>("active");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ManagedUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [resetTarget, setResetTarget] = useState<ManagedUser | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [resetConfirm, setResetConfirm] = useState("");
@@ -92,11 +104,16 @@ export default function AdminUsersContent() {
   const [resetPromptUser, setResetPromptUser] = useState<ManagedUser | null>(null);
   const [fieldErrors, setFieldErrors] = useState<CreateUserFieldErrors>({});
   const [newUser, setNewUser] = useState(EMPTY_USER);
+  const [restoreTarget, setRestoreTarget] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     name: "",
     role: "staff" as UserRole,
     departmentId: "dept-it",
   });
+
+  const listUsers = userView === "active" ? activeUsers : deletedUsers;
 
   const deptMap = useMemo(
     () => new Map(activeDepartments.map((d) => [d.id, d.name])),
@@ -117,18 +134,24 @@ export default function AdminUsersContent() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return activeUsers.filter((u) => {
+    return listUsers.filter((u) => {
       if (roleFilter !== "all" && u.role !== roleFilter) return false;
       if (!q) return true;
       return (
         u.name.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
-        u.id.toLowerCase().includes(q) ||
         mockUserEmail(u.username).includes(q) ||
         (deptMap.get(u.departmentId) ?? "").toLowerCase().includes(q)
       );
     });
-  }, [activeUsers, roleFilter, search, deptMap]);
+  }, [listUsers, roleFilter, search, deptMap]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paged = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   if (!user) return null;
 
@@ -182,6 +205,7 @@ export default function AdminUsersContent() {
 
   function openEdit(target: ManagedUser) {
     setEditTarget(target);
+    setEditFormError(null);
     setEditForm({
       name: target.name,
       role: target.role,
@@ -199,7 +223,9 @@ export default function AdminUsersContent() {
   function editHasChanges() {
     if (!editTarget) return false;
     return (
-      editForm.role !== editTarget.role || editForm.departmentId !== editTarget.departmentId
+      editForm.name.trim() !== editTarget.name ||
+      editForm.role !== editTarget.role ||
+      editForm.departmentId !== editTarget.departmentId
     );
   }
 
@@ -209,13 +235,32 @@ export default function AdminUsersContent() {
       setEditTarget(null);
       return;
     }
+    setEditFormError(null);
+    const name = editForm.name.trim();
+    if (!name) {
+      setEditFormError("กรุณากรอกชื่อ-นามสกุล");
+      return;
+    }
+    if (name !== editTarget.name) {
+      const err = await updateUserName(editTarget.id, name);
+      if (err) {
+        setEditFormError(err);
+        return;
+      }
+    }
     if (editForm.role !== editTarget.role) {
       const err = await updateUserRole(editTarget.id, editForm.role);
-      if (err) return;
+      if (err) {
+        setEditFormError(err);
+        return;
+      }
     }
     if (editForm.departmentId !== editTarget.departmentId) {
       const err = await updateUserDepartment(editTarget.id, editForm.departmentId);
-      if (err) return;
+      if (err) {
+        setEditFormError(err);
+        return;
+      }
     }
     setEditTarget(null);
   }
@@ -245,10 +290,16 @@ export default function AdminUsersContent() {
     setResetConfirm("");
   }
 
-  const deleteUser = activeUsers.find((u) => u.id === deleteTarget);
+  const deleteUser = listUsers.find((u) => u.id === deleteTarget);
+  const restoreUserRow = deletedUsers.find((u) => u.id === restoreTarget);
+
+  const viewOptions: { value: UserView; label: string; count: number }[] = [
+    { value: "active", label: "ใช้งาน", count: activeUsers.length },
+    { value: "deleted", label: "ถูกลบ", count: deletedUsers.length },
+  ];
 
   const roleFilterOptions: { value: RoleFilter; label: string; count?: number }[] = [
-    { value: "all", label: ROLE_TAB_LABELS.all, count: activeUsers.length },
+    { value: "all", label: ROLE_TAB_LABELS.all, count: listUsers.length },
     ...(["staff", "officer", "manager", "admin"] as UserRole[]).map((r) => ({
       value: r,
       label: ROLE_TAB_LABELS[r],
@@ -258,8 +309,7 @@ export default function AdminUsersContent() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        icon={Users}
+      <PageHeader
         title="ผู้ใช้และบทบาท"
         description="จัดการบัญชีผู้ใช้และบทบาทในระบบ"
         actions={
@@ -307,13 +357,33 @@ export default function AdminUsersContent() {
       <Card>
         <CardBody className="p-0">
           <div className="flex flex-col gap-3 border-b border-zinc-100 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
-            <AdminSearch
-              value={search}
-              onChange={setSearch}
-              placeholder="ค้นหาชื่อ หรืออีเมล..."
-              className="lg:max-w-xs"
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <AdminSearch
+                value={search}
+                onChange={(v) => {
+                  setSearch(v);
+                  setPage(1);
+                }}
+                placeholder="ค้นหาชื่อ หรืออีเมล..."
+                className="sm:max-w-xs"
+              />
+              <FilterPills
+                options={viewOptions}
+                value={userView}
+                onChange={(v) => {
+                  setUserView(v);
+                  setPage(1);
+                }}
+              />
+            </div>
+            <FilterPills
+              options={roleFilterOptions}
+              value={roleFilter}
+              onChange={(v) => {
+                setRoleFilter(v);
+                setPage(1);
+              }}
             />
-            <FilterPills options={roleFilterOptions} value={roleFilter} onChange={setRoleFilter} />
           </div>
 
           {filtered.length === 0 ? (
@@ -321,8 +391,14 @@ export default function AdminUsersContent() {
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-300">
                 <UserRound className="h-8 w-8" strokeWidth={1.5} aria-hidden />
               </div>
-              <p className="mt-5 text-sm font-medium text-zinc-700">ไม่พบผู้ใช้</p>
-              <p className="mt-1 text-sm text-zinc-500">ลองเปลี่ยนตัวกรองหรือเพิ่มผู้ใช้ใหม่</p>
+              <p className="mt-5 text-sm font-medium text-zinc-700">
+                {userView === "deleted" ? "ไม่มีผู้ใช้ที่ถูกลบ" : "ไม่พบผู้ใช้"}
+              </p>
+              <p className="mt-1 text-sm text-zinc-500">
+                {userView === "deleted"
+                  ? "รายการที่ลบแบบ soft delete จะแสดงที่นี่"
+                  : "ลองเปลี่ยนตัวกรองหรือเพิ่มผู้ใช้ใหม่"}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -341,14 +417,23 @@ export default function AdminUsersContent() {
                     <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">
                       อีเมล
                     </th>
+                    {userView === "deleted" && (
+                      <th scope="col" className="px-5 py-3 text-left text-xs font-semibold text-zinc-500">
+                        ลบเมื่อ
+                      </th>
+                    )}
                     <th scope="col" className="w-28 px-5 py-3" aria-hidden />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {filtered.map((u) => {
+                  {paged.map((u) => {
                     const avatarClass = ROLE_STAT_META[u.role].iconBg;
+                    const isDeleted = userView === "deleted";
                     return (
-                      <tr key={u.id} className="transition-colors hover:bg-zinc-50/80">
+                      <tr
+                        key={u.id}
+                        className={`transition-colors hover:bg-zinc-50/80 ${isDeleted ? "opacity-75" : ""}`}
+                      >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div
@@ -370,36 +455,57 @@ export default function AdminUsersContent() {
                           {deptMap.get(u.departmentId) ?? "—"}
                         </td>
                         <td className="px-5 py-4 text-zinc-600">{mockUserEmail(u.username)}</td>
+                        {userView === "deleted" && (
+                          <td className="px-5 py-4 text-zinc-500">
+                            {u.deletedAt ? formatShortDate(u.deletedAt) : "—"}
+                          </td>
+                        )}
                         <td className="px-5 py-4">
                           <div className="flex justify-end gap-1">
-                            <button
-                              type="button"
-                              disabled={u.id === user.id}
-                              onClick={() => setEditPromptUser(u)}
-                              className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
-                              aria-label={`แก้ไข ${u.name}`}
-                            >
-                              <Pencil className="h-4 w-4" aria-hidden />
-                            </button>
-                            {u.id !== user.id && u.role !== "admin" && (
+                            {isDeleted ? (
                               <button
                                 type="button"
-                                onClick={() => setResetPromptUser(u)}
-                                className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-amber-50 hover:text-amber-700"
-                                aria-label={`รีเซ็ตรหัสผ่าน ${u.name}`}
+                                onClick={() => {
+                                  setRestoreError(null);
+                                  setRestoreTarget(u.id);
+                                }}
+                                className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+                                aria-label={`กู้คืน ${u.name}`}
                               >
-                                <KeyRound className="h-4 w-4" aria-hidden />
+                                <RotateCcw className="h-4 w-4" aria-hidden />
                               </button>
-                            )}
-                            {u.id !== user.id && u.role !== "admin" && (
-                              <button
-                                type="button"
-                                onClick={() => setDeleteTarget(u.id)}
-                                className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                                aria-label={`ลบ ${u.name}`}
-                              >
-                                <Trash2 className="h-4 w-4" aria-hidden />
-                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={u.id === user.id}
+                                  onClick={() => setEditPromptUser(u)}
+                                  className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                  aria-label={`แก้ไข ${u.name}`}
+                                >
+                                  <Pencil className="h-4 w-4" aria-hidden />
+                                </button>
+                                {u.id !== user.id && u.role !== "admin" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setResetPromptUser(u)}
+                                    className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-amber-50 hover:text-amber-700"
+                                    aria-label={`รีเซ็ตรหัสผ่าน ${u.name}`}
+                                  >
+                                    <KeyRound className="h-4 w-4" aria-hidden />
+                                  </button>
+                                )}
+                                {u.id !== user.id && u.role !== "admin" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeleteTarget(u.id)}
+                                    className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                                    aria-label={`ลบ ${u.name}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" aria-hidden />
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </td>
@@ -410,6 +516,13 @@ export default function AdminUsersContent() {
               </table>
             </div>
           )}
+          <ListPagination
+            total={filtered.length}
+            page={currentPage}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardBody>
       </Card>
 
@@ -440,8 +553,16 @@ export default function AdminUsersContent() {
 
       {editTarget && (
         <UserFormModal title="แก้ไขผู้ใช้" onClose={() => setEditTarget(null)} onSubmit={handleSaveEdit}>
-          <Input label="ชื่อ-นามสกุล" value={editForm.name} disabled />
+          <Input
+            label="ชื่อ-นามสกุล"
+            value={editForm.name}
+            onChange={(e) => {
+              setEditForm((s) => ({ ...s, name: e.target.value }));
+              setEditFormError(null);
+            }}
+          />
           <p className="-mt-2 text-xs text-zinc-400">ชื่อผู้ใช้: {editTarget.username}</p>
+          {editFormError && <p className="text-sm text-red-600">{editFormError}</p>}
           <Select
             label="บทบาท"
             value={editForm.role}
@@ -517,7 +638,7 @@ export default function AdminUsersContent() {
         title="แก้ไขผู้ใช้"
         description={
           editPromptUser
-            ? `ต้องการแก้ไขบทบาทหรือฝ่ายของ ${editPromptUser.name} (${editPromptUser.username})?`
+            ? `ต้องการแก้ไขข้อมูลของ ${editPromptUser.name} (${editPromptUser.username})?`
             : undefined
         }
         confirmLabel="ดำเนินการต่อ"
@@ -548,20 +669,53 @@ export default function AdminUsersContent() {
         open={deleteTarget !== null}
         title="ยืนยันลบผู้ใช้"
         description={
-          deleteUser
+          deleteError ??
+          (deleteUser
             ? `ลบ ${deleteUser.name} (${deleteUser.username}) ออกจากระบบ? การดำเนินการนี้บันทึกใน Audit Log`
-            : undefined
+            : undefined)
         }
         confirmLabel="ลบผู้ใช้"
         variant="danger"
         onConfirm={async () => {
-          if (deleteTarget) {
-            const err = await softDeleteUser(deleteTarget);
-            if (err) return;
+          if (!deleteTarget) return;
+          const err = await softDeleteUser(deleteTarget);
+          if (err) {
+            setDeleteError(err);
+            return;
           }
           setDeleteTarget(null);
+          setDeleteError(null);
         }}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => {
+          setDeleteTarget(null);
+          setDeleteError(null);
+        }}
+      />
+
+      <ConfirmModal
+        open={restoreTarget !== null}
+        title="กู้คืนผู้ใช้"
+        description={
+          restoreError ??
+          (restoreUserRow
+            ? `กู้คืน ${restoreUserRow.name} (${restoreUserRow.username}) เข้าระบบอีกครั้ง?`
+            : undefined)
+        }
+        confirmLabel="กู้คืน"
+        onConfirm={async () => {
+          if (!restoreTarget) return;
+          const err = await restoreUser(restoreTarget);
+          if (err) {
+            setRestoreError(err);
+            return;
+          }
+          setRestoreTarget(null);
+          setRestoreError(null);
+        }}
+        onCancel={() => {
+          setRestoreTarget(null);
+          setRestoreError(null);
+        }}
       />
     </div>
   );

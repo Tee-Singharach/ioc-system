@@ -20,6 +20,7 @@ function isStaffRoute(pathname: string) {
 function isOfficerRoute(pathname: string) {
   return (
     pathname === "/officer/inbox" ||
+    /^\/officer\/inbox\/[^/]+$/.test(pathname) ||
     pathname === "/officer/tickets" ||
     /^\/officer\/tickets\/[^/]+$/.test(pathname)
   );

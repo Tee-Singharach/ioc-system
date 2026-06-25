@@ -129,6 +129,26 @@ export async function updateManagedUserDepartment(
   return { ok: true };
 }
 
+export async function updateManagedUserName(
+  actor: User,
+  userId: string,
+  name: string,
+): Promise<AdminResult> {
+  const gate = requireAdmin(actor);
+  if (!gate.ok) return gate;
+
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, error: "กรุณากรอกชื่อ-นามสกุล" };
+
+  const target = await prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
+  if (!target) return { ok: false, error: "ไม่พบผู้ใช้" };
+  if (trimmed === target.name) return { ok: true };
+
+  await prisma.user.update({ where: { id: userId }, data: { name: trimmed } });
+  await writeAuditLog(actor.id, "แก้ไขชื่อผู้ใช้", target.username, trimmed);
+  return { ok: true };
+}
+
 export async function softDeleteManagedUser(actor: User, userId: string): Promise<AdminResult> {
   const gate = requireAdmin(actor);
   if (!gate.ok) return gate;
@@ -141,6 +161,30 @@ export async function softDeleteManagedUser(actor: User, userId: string): Promis
   const now = new Date();
   await prisma.user.update({ where: { id: userId }, data: { deletedAt: now } });
   await writeAuditLog(actor.id, "ลบผู้ใช้", target.username, `ลบผู้ใช้ ${target.name}`);
+  return { ok: true };
+}
+
+export async function restoreManagedUser(actor: User, userId: string): Promise<AdminResult> {
+  const gate = requireAdmin(actor);
+  if (!gate.ok) return gate;
+
+  const target = await prisma.user.findFirst({ where: { id: userId, deletedAt: { not: null } } });
+  if (!target) return { ok: false, error: "ไม่พบผู้ใช้ที่ถูกลบ" };
+
+  const activeUsername = await prisma.user.findFirst({
+    where: { username: target.username, deletedAt: null, id: { not: userId } },
+  });
+  if (activeUsername) {
+    return { ok: false, error: "มีผู้ใช้ชื่อนี้ใช้งานอยู่แล้ว — เปลี่ยนชื่อผู้ใช้ก่อนกู้คืน" };
+  }
+
+  const dept = await prisma.department.findFirst({
+    where: { id: target.departmentId, deletedAt: null },
+  });
+  if (!dept) return { ok: false, error: "แผนกของผู้ใช้ถูกลบแล้ว — กู้คืนแผนกก่อน" };
+
+  await prisma.user.update({ where: { id: userId }, data: { deletedAt: null } });
+  await writeAuditLog(actor.id, "กู้คืนผู้ใช้", target.username, target.name);
   return { ok: true };
 }
 
@@ -226,5 +270,22 @@ export async function softDeleteManagedDepartment(
   const now = new Date();
   await prisma.department.update({ where: { id }, data: { deletedAt: now } });
   await writeAuditLog(actor.id, "ลบแผนก", id, `ลบแผนก ${target.name}`);
+  return { ok: true };
+}
+
+export async function restoreManagedDepartment(actor: User, id: string): Promise<AdminResult> {
+  const gate = requireAdmin(actor);
+  if (!gate.ok) return gate;
+
+  const target = await prisma.department.findFirst({ where: { id, deletedAt: { not: null } } });
+  if (!target) return { ok: false, error: "ไม่พบแผนกที่ถูกลบ" };
+
+  const nameTaken = await prisma.department.findFirst({
+    where: { name: target.name, deletedAt: null, id: { not: id } },
+  });
+  if (nameTaken) return { ok: false, error: "มีแผนกชื่อนี้ใช้งานอยู่แล้ว" };
+
+  await prisma.department.update({ where: { id }, data: { deletedAt: null } });
+  await writeAuditLog(actor.id, "กู้คืนแผนก", id, target.name);
   return { ok: true };
 }

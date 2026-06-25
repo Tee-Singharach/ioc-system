@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   DepartmentFormModal,
   type DepartmentFieldErrors,
@@ -14,6 +13,8 @@ import { useTickets } from "@/providers/mock-ticket-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { ListEmptyState } from "@/components/ui/list-empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 
 const EMPTY_DEPT: DepartmentFormValue = {
   slug: "",
@@ -132,8 +133,7 @@ export default function AdminDepartmentsContent() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        icon={Building2}
+      <PageHeader
         title="จัดการแผนก"
         description="จัดการข้อมูลแผนกในระบบ"
         actions={
@@ -154,13 +154,12 @@ export default function AdminDepartmentsContent() {
 
       {activeDepartments.length === 0 ? (
         <Card>
-          <CardBody>
-            <div className="flex flex-col items-center py-16 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-300">
-                <Building2 className="h-8 w-8" strokeWidth={1.5} aria-hidden />
-              </div>
-              <p className="mt-5 text-sm font-medium text-zinc-700">ยังไม่มีแผนก</p>
-            </div>
+          <CardBody className="p-0">
+            <ListEmptyState
+              icon={Building2}
+              title="ยังไม่มีแผนก"
+              description='กด "เพิ่มแผนก" เพื่อสร้างแผนกแรก'
+            />
           </CardBody>
         </Card>
       ) : (

@@ -16,7 +16,7 @@ interface SidebarBottomProps {
 const ROLE_LABELS: Record<UserRole, string> = {
   staff: "พนักงาน",
   officer: "เจ้าหน้าที่",
-  manager: "ผู้จัดการ",
+  manager: "หัวหน้า",
   admin: "ผู้ดูแลระบบ",
 };
 

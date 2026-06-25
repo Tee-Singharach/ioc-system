@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Ticket } from "@/lib/types/ticket";
-import { userInitials } from "@/lib/ticket-progress";
+import { formatDateTime, userInitials } from "@/lib/ticket-progress";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { Card } from "@/components/ui/card";
@@ -11,14 +11,6 @@ interface TicketTableProps {
   tickets: Ticket[];
   hrefPrefix?: string;
   emptyHint?: string;
-}
-
-function formatDeadline(iso: string) {
-  return new Date(iso).toLocaleDateString("th-TH", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 export function TicketTable({ tickets, hrefPrefix = "/tickets", emptyHint }: TicketTableProps) {
@@ -74,7 +66,7 @@ export function TicketTable({ tickets, hrefPrefix = "/tickets", emptyHint }: Tic
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-5 py-4 text-zinc-600">
-                  {formatDeadline(ticket.scheduledEndAt)}
+                  {formatDateTime(ticket.scheduledEndAt)}
                 </td>
               </tr>
             ))}

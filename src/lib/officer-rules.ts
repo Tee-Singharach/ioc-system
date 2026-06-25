@@ -6,7 +6,7 @@ export function canReceive(ticket: Ticket): boolean {
   return ticket.status === "รอรับเรื่อง" && !ticket.receivedById;
 }
 
-/** ส่งให้ผู้จัดการอนุมัติก่อนดำเนินการจริง — ต้องมีผลประเมินแล้ว */
+/** ส่งให้หัวหน้าอนุมัติก่อนดำเนินการจริง — ต้องมีผลประเมินแล้ว */
 export function canSubmitForApproval(ticket: Ticket): boolean {
   return ticket.status === "รอรับเรื่อง" && !!ticket.receivedById && hasCompleteEvaluation(ticket);
 }

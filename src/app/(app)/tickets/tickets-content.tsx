@@ -12,6 +12,7 @@ import { TicketFilterBar } from "@/components/tickets/ticket-filters";
 import { TicketTable } from "@/components/tickets/ticket-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 const PAGE_SIZE = 8;
 
@@ -56,18 +57,18 @@ export default function StaffTicketsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900">คำร้องของฉัน</h1>
-          <p className="mt-1 text-sm text-zinc-500">{filtered.length} รายการ</p>
-        </div>
-        <Link href="/tickets/new" className="shrink-0">
-          <Button>
-            <Plus className="h-4 w-4" />
-            สร้างคำร้องใหม่
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title="คำร้องของฉัน"
+        description={`${filtered.length} รายการ`}
+        actions={
+          <Link href="/tickets/new" className="shrink-0">
+            <Button>
+              <Plus className="h-4 w-4" />
+              สร้างคำร้องใหม่
+            </Button>
+          </Link>
+        }
+      />
 
       <Card>
         <CardBody className="p-0 sm:p-0">

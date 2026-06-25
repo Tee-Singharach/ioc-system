@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import type { ProgressNote } from "@/lib/types/ticket";
 import {
-  formatShortDate,
+  formatDateTime,
   handoffProgressReason,
   isHandoffProgressNote,
 } from "@/lib/ticket-progress";
@@ -47,7 +47,7 @@ export function ProgressNotes({
                   </div>
                 ) : null}
                 <p className={`text-xs ${handoff ? "mt-1 text-emerald-600/80" : "text-zinc-500"}`}>
-                  {n.authorName} · {formatShortDate(n.createdAt)}
+                  {n.authorName} · {formatDateTime(n.createdAt)}
                 </p>
                 <p
                   className={`mt-1 text-sm leading-relaxed ${

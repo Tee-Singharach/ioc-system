@@ -7,7 +7,7 @@ export const ROLE_TAB_LABELS: Record<UserRole | "all", string> = {
   all: "ทั้งหมด",
   staff: "พนักงาน",
   officer: "เจ้าหน้าที่",
-  manager: "หัวหน้างาน",
+  manager: "หัวหน้า",
   admin: "ผู้ดูแลระบบ",
 };
 
@@ -28,7 +28,7 @@ export const ROLE_STAT_META: Record<
     iconBg: "bg-amber-100 text-amber-600",
   },
   manager: {
-    title: "หัวหน้างาน",
+    title: "หัวหน้า",
     description: "อนุมัติคำร้อง ดู Dashboard",
     countBg: "bg-violet-50 text-violet-700",
     iconBg: "bg-violet-100 text-violet-600",

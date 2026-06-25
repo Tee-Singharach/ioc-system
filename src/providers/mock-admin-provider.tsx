@@ -14,10 +14,13 @@ import {
   fetchAdminUsers,
   actionAdminCreateDepartment,
   actionAdminCreateUser,
+  actionAdminRestoreDepartment,
+  actionAdminRestoreUser,
   actionAdminSoftDeleteDepartment,
   actionAdminSoftDeleteUser,
   actionAdminUpdateDepartment,
   actionAdminUpdateUserDepartment,
+  actionAdminUpdateUserName,
   actionAdminUpdateUserRole,
 } from "@/lib/actions/data";
 import type { ManagedDepartment, ManagedUser } from "@/lib/types/admin";
@@ -26,10 +29,14 @@ import { useMockAuth } from "@/providers/mock-auth-provider";
 
 interface MockAdminContextValue {
   activeUsers: ManagedUser[];
+  deletedUsers: ManagedUser[];
   activeDepartments: ManagedDepartment[];
+  deletedDepartments: ManagedDepartment[];
+  updateUserName: (id: string, name: string) => Promise<string | null>;
   updateUserRole: (id: string, role: UserRole) => Promise<string | null>;
   updateUserDepartment: (id: string, departmentId: string) => Promise<string | null>;
   softDeleteUser: (id: string) => Promise<string | null>;
+  restoreUser: (id: string) => Promise<string | null>;
   createUser: (
     input: Omit<ManagedUser, "id" | "deletedAt">,
     password: string,
@@ -44,6 +51,7 @@ interface MockAdminContextValue {
     input: { name: string; shortName: string },
   ) => Promise<string | null>;
   softDeleteDepartment: (id: string) => Promise<string | null>;
+  restoreDepartment: (id: string) => Promise<string | null>;
 }
 
 const MockAdminContext = createContext<MockAdminContextValue | null>(null);
@@ -70,7 +78,23 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
   }, [reload]);
 
   const activeUsers = useMemo(() => users.filter((u) => !u.deletedAt), [users]);
+  const deletedUsers = useMemo(() => users.filter((u) => !!u.deletedAt), [users]);
   const activeDepartments = useMemo(() => departments.filter((d) => !d.deletedAt), [departments]);
+  const deletedDepartments = useMemo(
+    () => departments.filter((d) => !!d.deletedAt),
+    [departments],
+  );
+
+  const updateUserName = useCallback(
+    async (id: string, name: string) => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminUpdateUserName(actor, id, name);
+      if (!result.ok) return result.error;
+      await reload();
+      return null;
+    },
+    [actor, reload],
+  );
 
   const updateUserRole = useCallback(
     async (id: string, role: UserRole) => {
@@ -98,6 +122,17 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
       const result = await actionAdminSoftDeleteUser(actor, id);
+      if (!result.ok) return result.error;
+      await reload();
+      return null;
+    },
+    [actor, reload],
+  );
+
+  const restoreUser = useCallback(
+    async (id: string) => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminRestoreUser(actor, id);
       if (!result.ok) return result.error;
       await reload();
       return null;
@@ -159,28 +194,49 @@ export function MockAdminProvider({ children }: { children: ReactNode }) {
     [actor, reload],
   );
 
+  const restoreDepartment = useCallback(
+    async (id: string): Promise<string | null> => {
+      if (!actor) return "ไม่มีสิทธิ์ดำเนินการ";
+      const result = await actionAdminRestoreDepartment(actor, id);
+      if (!result.ok) return result.error;
+      await reload();
+      return null;
+    },
+    [actor, reload],
+  );
+
   const value = useMemo(
     () => ({
       activeUsers,
+      deletedUsers,
       activeDepartments,
+      deletedDepartments,
+      updateUserName,
       updateUserRole,
       updateUserDepartment,
       softDeleteUser,
+      restoreUser,
       createUser,
       createDepartment,
       updateDepartment,
       softDeleteDepartment,
+      restoreDepartment,
     }),
     [
       activeUsers,
+      deletedUsers,
       activeDepartments,
+      deletedDepartments,
+      updateUserName,
       updateUserRole,
       updateUserDepartment,
       softDeleteUser,
+      restoreUser,
       createUser,
       createDepartment,
       updateDepartment,
       softDeleteDepartment,
+      restoreDepartment,
     ],
   );
 

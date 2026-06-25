@@ -8,7 +8,7 @@ import {
   parseEstimatedCost,
   validateEvaluationPayload,
 } from "@/lib/ticket-evaluation";
-import { formatShortDate } from "@/lib/ticket-progress";
+import { formatDateTime } from "@/lib/ticket-progress";
 import { Button } from "@/components/ui/button";
 import { FORM_FIELD_CLASS, FormSection } from "@/components/ui/form-section";
 import { Input } from "@/components/ui/input";
@@ -84,7 +84,7 @@ export function EvaluationCard({ evaluation }: { evaluation: TicketEvaluation })
           <h2 className="text-sm font-semibold text-zinc-900">ผลการประเมิน</h2>
         </div>
         <p className="text-xs text-zinc-500">
-          {evaluation.evaluatedByName} · {formatShortDate(evaluation.evaluatedAt)}
+          {evaluation.evaluatedByName} · {formatDateTime(evaluation.evaluatedAt)}
         </p>
       </div>
       <dl className="space-y-2 p-4">

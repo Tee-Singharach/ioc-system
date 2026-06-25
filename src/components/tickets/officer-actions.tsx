@@ -143,7 +143,7 @@ export function OfficerActions({
 
           {step === 2 && (
             <p className="rounded-lg bg-zinc-100 px-3 py-2.5 text-center text-xs leading-relaxed text-zinc-600">
-              รอผู้จัดการอนุมัติ — ยังไม่เริ่มดำเนินการจริง
+              รอหัวหน้าอนุมัติ — ยังไม่เริ่มดำเนินการจริง
             </p>
           )}
 

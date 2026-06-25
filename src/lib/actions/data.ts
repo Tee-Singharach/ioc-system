@@ -177,8 +177,16 @@ export async function actionAdminUpdateUserDepartment(
   return adminDb.updateManagedUserDepartment(actor, userId, departmentId);
 }
 
+export async function actionAdminUpdateUserName(actor: User, userId: string, name: string) {
+  return adminDb.updateManagedUserName(actor, userId, name);
+}
+
 export async function actionAdminSoftDeleteUser(actor: User, userId: string) {
   return adminDb.softDeleteManagedUser(actor, userId);
+}
+
+export async function actionAdminRestoreUser(actor: User, userId: string) {
+  return adminDb.restoreManagedUser(actor, userId);
 }
 
 export async function actionAdminCreateDepartment(
@@ -198,4 +206,8 @@ export async function actionAdminUpdateDepartment(
 
 export async function actionAdminSoftDeleteDepartment(actor: User, id: string) {
   return adminDb.softDeleteManagedDepartment(actor, id);
+}
+
+export async function actionAdminRestoreDepartment(actor: User, id: string) {
+  return adminDb.restoreManagedDepartment(actor, id);
 }

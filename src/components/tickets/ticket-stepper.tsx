@@ -1,5 +1,5 @@
 import type { StatusHistoryEntry, Ticket, TicketStatus } from "@/lib/types/ticket";
-import { formatShortDate } from "@/lib/ticket-progress";
+import { formatDateTime } from "@/lib/ticket-progress";
 import { buildWorkflowTimeline, rejectionReasonFromNote, rejectionRejectorFromNote, TICKET_WORKFLOW_STEPS, workflowStepIndex } from "@/lib/ticket-workflow";
 
 const TERMINAL: TicketStatus[] = ["ปฏิเสธ", "ยกเลิก"];
@@ -56,6 +56,7 @@ export function TicketStepper({
               const done = tl.state === "done";
               const rejectedHere = tl.state === "rejected";
               const active = tl.state === "current" && !isTerminal;
+              const stepLabel = tl.caption ?? step.label;
 
               return (
                 <li key={step.id} className="relative z-10 flex min-w-0 flex-col items-center px-0.5">
@@ -97,24 +98,21 @@ export function TicketStepper({
                     )}
                   </div>
                   <p
-                    className={`mt-2 w-full text-center text-[10px] leading-snug font-medium sm:text-xs ${
+                    className={`mt-2 w-full text-center text-[10px] leading-snug font-semibold sm:text-xs ${
                       rejectedHere
                         ? "text-red-700"
-                        : done || active
-                          ? "text-zinc-900"
-                          : "text-zinc-400"
+                        : active
+                          ? "text-blue-600"
+                          : done
+                            ? "text-emerald-700"
+                            : "text-zinc-400"
                     }`}
                   >
-                    {step.label}
+                    {stepLabel}
                   </p>
-                  {rejectedHere && (
-                    <p className="mt-0.5 text-center text-[10px] font-semibold text-red-600 sm:text-xs">
-                      ปฏิเสธ
-                    </p>
-                  )}
                   <p
                     className={`mt-0.5 w-full text-center text-[10px] tabular-nums sm:text-xs ${
-                      tl.at
+                      tl.displayAt
                         ? rejectedHere
                           ? "font-medium text-red-600"
                           : active
@@ -125,7 +123,7 @@ export function TicketStepper({
                         : "text-zinc-300"
                     }`}
                   >
-                    {tl.at ? formatShortDate(tl.at) : "—"}
+                    {tl.displayAt ? formatDateTime(tl.displayAt) : "—"}
                   </p>
                 </li>
               );
@@ -146,7 +144,7 @@ export function TicketStepper({
           <p className="text-sm font-medium">
             {rejectionRejector ? `ปฏิเสธโดย ${rejectionRejector}` : terminal.status}
             {" · "}
-            {formatShortDate(terminal.at)}
+            {formatDateTime(terminal.at)}
           </p>
           {rejectionReason && (
             <p className="mt-1.5 text-sm leading-relaxed">

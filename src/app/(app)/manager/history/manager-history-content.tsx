@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { History } from "lucide-react";
 import { getApprovalDecision, getApprovalHistoryTickets } from "@/lib/manager-access";
-import { formatShortDate } from "@/lib/ticket-progress";
+import { formatDateTime } from "@/lib/ticket-progress";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
@@ -67,7 +67,7 @@ export default function ManagerHistoryContent() {
                       <p className="mt-1 truncate font-medium text-zinc-900">{ticket.title}</p>
                       <p className="mt-0.5 text-sm text-zinc-500">
                         {ticket.requesterName}
-                        {decision ? ` · ${formatShortDate(decision.at)}` : ""}
+                        {decision ? ` · ${formatDateTime(decision.at)}` : ""}
                       </p>
                       {decision?.note && (
                         <p className="mt-1 line-clamp-2 text-sm text-zinc-600">{decision.note}</p>

@@ -12,6 +12,7 @@ import { TicketFilterBar } from "@/components/tickets/ticket-filters";
 import { TicketTable } from "@/components/tickets/ticket-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 const PAGE_SIZE = 8;
 
@@ -56,12 +57,10 @@ export default function OfficerTicketsContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900">คำร้องทั้งหมด</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          ดูอย่างเดียว — คำร้องในแผนกและงานที่มอบหมาย · {filtered.length} รายการ
-        </p>
-      </div>
+      <PageHeader
+        title="คำร้องทั้งหมด"
+        description={`ดูอย่างเดียว — คำร้องในแผนกและงานที่มอบหมาย · ${filtered.length} รายการ`}
+      />
 
       <Card>
         <CardBody className="p-0 sm:p-0">

@@ -4,6 +4,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Menu, X } from "lucide-react";
+import { useTickets } from "@/providers/mock-ticket-provider";
 import { Button } from "@/components/ui/button";
 
 // ponytail: mock until notification API exists
@@ -14,7 +15,7 @@ const MOCK_NOTIFICATIONS = [
 ] as const;
 
 const BREADCRUMBS: Record<string, string> = {
-  "/tickets": "คำร้องทั้งหมด",
+  "/tickets": "คำร้องของฉัน",
   "/tickets/new": "สร้างคำร้องใหม่",
   "/officer/inbox": "กล่องงาน",
   "/officer/tickets": "คำร้องทั้งหมด",
@@ -30,15 +31,31 @@ const BREADCRUMBS: Record<string, string> = {
 function isTicketDetailPath(pathname: string) {
   return (
     /^\/tickets\/[^/]+$/.test(pathname) ||
+    /^\/officer\/inbox\/[^/]+$/.test(pathname) ||
     /^\/officer\/tickets\/[^/]+$/.test(pathname) ||
     /^\/manager\/tickets\/[^/]+$/.test(pathname)
   );
 }
 
-function ticketDetailParent(pathname: string) {
-  if (pathname.startsWith("/officer")) return { href: "/officer/tickets", label: "คำร้องทั้งหมด" };
-  if (pathname.startsWith("/manager")) return { href: "/manager/approvals", label: "รออนุมัติ" };
-  return { href: "/tickets", label: "คำร้องทั้งหมด" };
+function managerTicketId(pathname: string) {
+  const m = pathname.match(/^\/manager\/tickets\/([^/]+)$/);
+  return m?.[1] ?? null;
+}
+
+function ticketDetailParent(pathname: string, managerTicketStatus?: string) {
+  if (/^\/officer\/inbox\/[^/]+$/.test(pathname)) {
+    return { href: "/officer/inbox", label: "กล่องงาน" };
+  }
+  if (pathname.startsWith("/officer")) {
+    return { href: "/officer/tickets", label: "คำร้องทั้งหมด" };
+  }
+  if (pathname.startsWith("/manager")) {
+    if (managerTicketStatus === "รออนุมัติ") {
+      return { href: "/manager/approvals", label: "รออนุมัติ" };
+    }
+    return { href: "/manager/history", label: "ประวัติการอนุมัติ" };
+  }
+  return { href: "/tickets", label: "คำร้องของฉัน" };
 }
 
 function formatRelative(iso: string) {
@@ -71,9 +88,15 @@ interface AppNavbarProps {
 
 export const AppNavbar = memo(function AppNavbar({ onMenuToggle, menuOpen = false }: AppNavbarProps) {
   const pathname = usePathname();
+  const tickets = useTickets();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const unread = MOCK_NOTIFICATIONS.length;
+
+  const managerId = managerTicketId(pathname);
+  const managerTicketStatus = managerId
+    ? tickets.find((t) => t.id === managerId)?.status
+    : undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -85,50 +108,52 @@ export const AppNavbar = memo(function AppNavbar({ onMenuToggle, menuOpen = fals
   }, [open]);
 
   const label = breadcrumbLabel(pathname);
-  const detailParent = isTicketDetailPath(pathname) ? ticketDetailParent(pathname) : null;
+  const detailParent = isTicketDetailPath(pathname)
+    ? ticketDetailParent(pathname, managerTicketStatus)
+    : null;
   const adminLabel = isAdminPath(pathname) ? adminBreadcrumbLabel(pathname) : null;
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-zinc-200 bg-white px-4 sm:px-6">
-      <div className="flex min-w-0 items-center gap-2 lg:hidden">
-        <Button
-          type="button"
-          variant="ghost"
-          className="shrink-0 px-2.5"
-          aria-label={menuOpen ? "ปิดเมนู" : "เปิดเมนู"}
-          aria-expanded={menuOpen}
-          onClick={onMenuToggle}
-        >
-          {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-      </div>
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-4 sm:px-6">
+      <Button
+        type="button"
+        variant="ghost"
+        className="shrink-0 px-2.5 lg:hidden"
+        aria-label={menuOpen ? "ปิดเมนู" : "เปิดเมนู"}
+        aria-expanded={menuOpen}
+        onClick={onMenuToggle}
+      >
+        {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </Button>
 
+      <div className="min-w-0 flex-1">
         {detailParent && label === "รายละเอียดคำร้อง" ? (
-          <nav aria-label="breadcrumb" className="hidden min-w-0 items-center gap-2 text-sm lg:flex">
+          <nav aria-label="breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
             <Link
               href={detailParent.href}
-              className="text-zinc-500 transition-colors hover:text-zinc-800"
+              className="shrink-0 text-zinc-500 transition-colors hover:text-zinc-800"
             >
               {detailParent.label}
             </Link>
-            <span className="text-zinc-300" aria-hidden>
+            <span className="shrink-0 text-zinc-300" aria-hidden>
               /
             </span>
             <span className="truncate font-medium text-zinc-700">รายละเอียดคำร้อง</span>
           </nav>
         ) : adminLabel ? (
-          <nav aria-label="breadcrumb" className="hidden min-w-0 items-center gap-2 text-sm lg:flex">
-            <span className="text-zinc-500">ผู้ดูแลระบบ</span>
-            <span className="text-zinc-300" aria-hidden>
+          <nav aria-label="breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
+            <span className="hidden shrink-0 text-zinc-500 sm:inline">ผู้ดูแลระบบ</span>
+            <span className="hidden shrink-0 text-zinc-300 sm:inline" aria-hidden>
               /
             </span>
             <span className="truncate font-medium text-zinc-700">{adminLabel}</span>
           </nav>
         ) : label ? (
-          <p className="hidden truncate text-sm font-medium text-zinc-500 lg:block">{label}</p>
+          <p className="truncate text-sm font-medium text-zinc-700">{label}</p>
         ) : null}
+      </div>
 
-      <div ref={rootRef} className="relative ml-auto">
+      <div ref={rootRef} className="relative shrink-0">
           <Button
             type="button"
             variant="ghost"
