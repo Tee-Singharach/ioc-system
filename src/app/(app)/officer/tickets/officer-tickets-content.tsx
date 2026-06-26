@@ -8,6 +8,7 @@ import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useTickets } from "@/providers/mock-ticket-provider";
 import type { WorkflowFilterTab } from "@/lib/ticket-workflow";
 import { countByWorkflowFilterTab, matchesWorkflowFilterTab } from "@/lib/ticket-workflow";
+import { sortTicketsByRecent } from "@/lib/ticket-sort";
 import { TicketFilterBar } from "@/components/tickets/ticket-filters";
 import { TicketTable } from "@/components/tickets/ticket-table";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ export default function OfficerTicketsContent() {
   const tabCounts = useMemo(() => countByWorkflowFilterTab(officerTickets), [officerTickets]);
 
   const filtered = useMemo(() => {
-    return officerTickets.filter((t) => {
+    const list = officerTickets.filter((t) => {
       const q = search.toLowerCase();
       const matchSearch =
         !q ||
@@ -46,6 +47,7 @@ export default function OfficerTicketsContent() {
       const matchPriority = !priority || t.priority === priority;
       return matchSearch && matchTab && matchDept && matchPriority;
     });
+    return sortTicketsByRecent(list);
   }, [officerTickets, search, statusTab, departmentId, priority]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));

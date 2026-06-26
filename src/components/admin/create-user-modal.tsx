@@ -39,6 +39,8 @@ export interface CreateUserFieldErrors {
   email?: string;
   password?: string;
   confirmPassword?: string;
+  departmentId?: string;
+  form?: string;
 }
 
 interface CreateUserModalProps {
@@ -100,6 +102,9 @@ export function CreateUserModal({
             }}
           >
             <div className="flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-6 py-5">
+              {fieldErrors.form && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{fieldErrors.form}</p>
+              )}
               <Select
                 label="คำนำหน้า"
                 required
@@ -182,6 +187,7 @@ export function CreateUserModal({
                   value={value.departmentId}
                   onChange={(e) => onChange({ departmentId: e.target.value })}
                   options={deptOptions}
+                  error={fieldErrors.departmentId}
                 />
               </div>
             </div>

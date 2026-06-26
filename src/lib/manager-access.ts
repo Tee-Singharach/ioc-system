@@ -1,4 +1,5 @@
 import type { Ticket, User } from "@/lib/types/ticket";
+import { sortTicketsByRecent } from "@/lib/ticket-sort";
 
 export function getManagerDepartmentTickets(
   tickets: Ticket[],
@@ -11,8 +12,10 @@ export function getPendingApprovalTickets(
   tickets: Ticket[],
   manager: Pick<User, "departmentId">,
 ): Ticket[] {
-  return tickets.filter(
-    (t) => t.status === "รออนุมัติ" && t.departmentId === manager.departmentId,
+  return sortTicketsByRecent(
+    tickets.filter(
+      (t) => t.status === "รออนุมัติ" && t.departmentId === manager.departmentId,
+    ),
   );
 }
 
@@ -20,13 +23,13 @@ export function getApprovalHistoryTickets(
   tickets: Ticket[],
   manager: Pick<User, "departmentId">,
 ): Ticket[] {
-  return tickets
-    .filter((t) => {
+  return sortTicketsByRecent(
+    tickets.filter((t) => {
       if (t.departmentId !== manager.departmentId) return false;
       if (t.status !== "เสร็จสมบูรณ์" && t.status !== "ปฏิเสธ") return false;
       return t.statusHistory.some((h) => h.status === "รออนุมัติ");
-    })
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    }),
+  );
 }
 
 export function canManagerViewTicket(

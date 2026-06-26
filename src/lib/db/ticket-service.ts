@@ -26,7 +26,7 @@ async function auditTicket(actorId: string, action: string, ticketId: string, de
 export async function listAllTickets() {
   const rows = await prisma.ticket.findMany({
     include: ticketInclude,
-    orderBy: { createdAt: "desc" },
+    orderBy: { updatedAt: "desc" },
   });
   return rows.map(mapTicket);
 }

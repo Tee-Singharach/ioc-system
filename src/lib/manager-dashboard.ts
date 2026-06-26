@@ -1,6 +1,7 @@
 import type { Ticket, TicketStatus, User } from "@/lib/types/ticket";
 import { isTicketOverdue } from "@/lib/ticket-progress";
 import { getManagerDepartmentTickets } from "@/lib/manager-access";
+import { sortTicketsByRecent } from "@/lib/ticket-sort";
 
 export interface DashboardStatBlock {
   newTickets: number;
@@ -140,7 +141,5 @@ export function getLatestDepartmentTickets(
   manager: Pick<User, "departmentId">,
   limit = 5,
 ): Ticket[] {
-  return [...getManagerDepartmentTickets(tickets, manager)]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, limit);
+  return sortTicketsByRecent(getManagerDepartmentTickets(tickets, manager)).slice(0, limit);
 }

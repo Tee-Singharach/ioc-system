@@ -10,6 +10,7 @@ import {
   getOfficerInProgressTasks,
 } from "@/lib/officer-access";
 import { formatDateTime } from "@/lib/ticket-progress";
+import { sortTicketsByRecent } from "@/lib/ticket-sort";
 import { TICKET_WORKFLOW_STEPS, workflowStepIndex } from "@/lib/ticket-workflow";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 import { useMockTickets } from "@/providers/mock-ticket-provider";
@@ -106,20 +107,16 @@ export default function OfficerInboxContent() {
   const [tab, setTab] = useState<InboxTab>("pending");
 
   const pending = useMemo(
-    () => (user ? getInboxPendingTickets(tickets, user) : []),
+    () => (user ? sortTicketsByRecent(getInboxPendingTickets(tickets, user)) : []),
     [tickets, user],
   );
   const assignedTasks = useMemo(() => {
     if (!user) return [];
-    return getOfficerAssignedTasks(tickets, user).sort(
-      (a, b) => workflowStepIndex(a) - workflowStepIndex(b),
-    );
+    return sortTicketsByRecent(getOfficerAssignedTasks(tickets, user));
   }, [tickets, user]);
   const inProgressTasks = useMemo(() => {
     if (!user) return [];
-    return getOfficerInProgressTasks(tickets, user).sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
+    return sortTicketsByRecent(getOfficerInProgressTasks(tickets, user));
   }, [tickets, user]);
 
   const list =

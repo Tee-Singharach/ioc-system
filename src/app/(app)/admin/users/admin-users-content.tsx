@@ -61,6 +61,13 @@ function emailToUsername(email: string) {
   return local.replace(/[^a-z0-9_]/g, "");
 }
 
+function mapCreateUserServerError(err: string): CreateUserFieldErrors {
+  if (err.includes("ชื่อผู้ใช้")) return { email: err };
+  if (err.includes("รหัสผ่าน")) return { password: err };
+  if (err.includes("แผนก")) return { departmentId: err };
+  return { form: err };
+}
+
 const EMPTY_USER = {
   prefix: "นาย",
   firstName: "",
@@ -195,8 +202,7 @@ export default function AdminUsersContent() {
       newUser.password,
     );
     if (err) {
-      if (err.includes("ชื่อผู้ใช้")) setFieldErrors({ email: err });
-      else setFieldErrors({ firstName: err });
+      setFieldErrors(mapCreateUserServerError(err));
       return;
     }
     setCreateOpen(false);

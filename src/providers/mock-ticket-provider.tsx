@@ -28,6 +28,7 @@ import {
   actionUpdateTicket,
   fetchAllTickets,
 } from "@/lib/actions/data";
+import { sortTicketsByRecent } from "@/lib/ticket-sort";
 import { useMockAuth } from "@/providers/mock-auth-provider";
 
 interface TicketActions {
@@ -62,11 +63,8 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
   const patchTicket = useCallback((updated: Ticket | undefined) => {
     if (!updated) return;
     setTickets((prev) => {
-      const idx = prev.findIndex((t) => t.id === updated.id);
-      if (idx === -1) return [updated, ...prev];
-      const next = [...prev];
-      next[idx] = updated;
-      return next;
+      const rest = prev.filter((t) => t.id !== updated.id);
+      return sortTicketsByRecent([updated, ...rest]);
     });
   }, []);
 
@@ -74,7 +72,7 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     fetchAllTickets().then((list) => {
       if (cancelled) return;
-      setTickets(list);
+      setTickets(sortTicketsByRecent(list));
     });
     return () => {
       cancelled = true;

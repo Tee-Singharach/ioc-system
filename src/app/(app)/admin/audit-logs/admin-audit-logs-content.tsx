@@ -64,7 +64,7 @@ export default function AdminAuditLogsContent() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return categorized.filter(({ log, cat }) => {
+    const list = categorized.filter(({ log, cat }) => {
       if (category !== "all" && cat !== category) return false;
       if (!q) return true;
       return (
@@ -76,6 +76,7 @@ export default function AdminAuditLogsContent() {
         (log.detail ?? "").toLowerCase().includes(q)
       );
     });
+    return list.sort((a, b) => new Date(b.log.at).getTime() - new Date(a.log.at).getTime());
   }, [categorized, category, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));

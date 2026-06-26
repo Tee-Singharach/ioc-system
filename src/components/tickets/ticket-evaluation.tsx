@@ -10,10 +10,46 @@ import {
 } from "@/lib/ticket-evaluation";
 import { formatDateTime } from "@/lib/ticket-progress";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { FORM_FIELD_CLASS, FormSection } from "@/components/ui/form-section";
 import { Input } from "@/components/ui/input";
 import { ModalPortal } from "@/components/ui/modal-portal";
 import { Textarea } from "@/components/ui/textarea";
+
+function isEvaluationDraftDirty(
+  initial: TicketEvaluation | undefined,
+  diagnosis: string,
+  hasCost: boolean,
+  estimatedCost: string,
+  notes: string,
+): boolean {
+  const initDiagnosis = initial?.diagnosis ?? "";
+  const initHasCost = initial?.estimatedCost != null;
+  const initCost = initial?.estimatedCost != null ? String(initial.estimatedCost) : "";
+  const initNotes = initial?.notes ?? "";
+  if (diagnosis.trim() !== initDiagnosis) return true;
+  if (hasCost !== initHasCost) return true;
+  if (estimatedCost.trim() !== initCost) return true;
+  if (notes.trim() !== initNotes) return true;
+  return false;
+}
+
+if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
+  if (!isEvaluationDraftDirty(undefined, "x", false, "", "")) {
+    throw new Error("ticket-evaluation: empty draft vs undefined initial");
+  }
+  if (
+    isEvaluationDraftDirty(
+      { diagnosis: "a", estimatedCost: 100, notes: "n" } as TicketEvaluation,
+      "a",
+      true,
+      "100",
+      "n",
+    )
+  ) {
+    throw new Error("ticket-evaluation: matching draft should not be dirty");
+  }
+}
 
 function TicketRefBanner({
   title,
@@ -157,6 +193,7 @@ export function EvaluationForm({
   onSave,
   showHeader = true,
   onSaved,
+  onDirtyChange,
   className = "",
 }: {
   ticket: Pick<Ticket, "departmentId" | "departmentName" | "title" | "description">;
@@ -165,6 +202,7 @@ export function EvaluationForm({
   onSave: (data: Omit<TicketEvaluation, "evaluatedAt" | "evaluatedById" | "evaluatedByName">) => void;
   showHeader?: boolean;
   onSaved?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
   className?: string;
 }) {
   const [diagnosis, setDiagnosis] = useState(initial?.diagnosis ?? "");
@@ -174,6 +212,10 @@ export function EvaluationForm({
   );
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    onDirtyChange?.(isEvaluationDraftDirty(initial, diagnosis, hasCost, estimatedCost, notes));
+  }, [initial, diagnosis, hasCost, estimatedCost, notes, onDirtyChange]);
 
   if (readOnly && initial) {
     return <EvaluationCard evaluation={initial} />;
@@ -284,14 +326,35 @@ export function EvaluationModal({
   initial?: TicketEvaluation;
   onSave: (data: Omit<TicketEvaluation, "evaluatedAt" | "evaluatedById" | "evaluatedByName">) => void;
 }) {
+  const [dirty, setDirty] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  function requestClose() {
+    if (dirty) setDiscardOpen(true);
+    else onClose();
+  }
+
+  function confirmDiscard() {
+    setDiscardOpen(false);
+    setDirty(false);
+    onClose();
+  }
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setDirty(false);
+      setDiscardOpen(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || discardOpen) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") requestClose();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, discardOpen, dirty]);
 
   if (!open) return null;
 
@@ -302,7 +365,7 @@ export function EvaluationModal({
           type="button"
           className="absolute inset-0 bg-zinc-900/45 backdrop-blur-[2px]"
           aria-label="ปิด"
-          onClick={onClose}
+          onClick={requestClose}
         />
         <div
           role="dialog"
@@ -324,7 +387,7 @@ export function EvaluationModal({
             <button
               type="button"
               aria-label="ปิด"
-              onClick={onClose}
+              onClick={requestClose}
               className="absolute top-3 right-3 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
             >
               <X className="h-5 w-5" />
@@ -338,10 +401,22 @@ export function EvaluationModal({
               showHeader={false}
               onSave={onSave}
               onSaved={onClose}
+              onDirtyChange={setDirty}
             />
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={discardOpen}
+        title="ทิ้งการแก้ไข?"
+        description="มีข้อมูลที่ยังไม่ได้บันทึก — ต้องการปิดฟอร์มหรือไม่"
+        confirmLabel="ทิ้งและปิด"
+        cancelLabel="กลับไปแก้ไข"
+        variant="danger"
+        onConfirm={confirmDiscard}
+        onCancel={() => setDiscardOpen(false)}
+      />
     </ModalPortal>
   );
 }
