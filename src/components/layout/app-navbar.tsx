@@ -2,17 +2,13 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, Menu, X } from "lucide-react";
 import { useTickets } from "@/providers/mock-ticket-provider";
+import { useNotifications } from "@/providers/notification-provider";
 import { Button } from "@/components/ui/button";
-
-// ponytail: mock until notification API exists
-const MOCK_NOTIFICATIONS = [
-  { id: "n1", title: "คำร้อง IOC-2024-003 เปลี่ยนเป็นกำลังดำเนินการ", at: "2024-06-17T09:30:00" },
-  { id: "n2", title: "คำร้อง IOC-2024-001 ได้รับการอนุมัติ", at: "2024-06-16T14:15:00" },
-  { id: "n3", title: "มีคำร้องใหม่รอดำเนินการ", at: "2024-06-15T11:00:00" },
-] as const;
+import { Badge } from "@/components/ui/badge";
+import { parseNotificationDisplay } from "@/lib/notification-display";
 
 const BREADCRUMBS: Record<string, string> = {
   "/tickets": "คำร้องของฉัน",
@@ -58,15 +54,6 @@ function ticketDetailParent(pathname: string, managerTicketStatus?: string) {
   return { href: "/tickets", label: "คำร้องของฉัน" };
 }
 
-function formatRelative(iso: string) {
-  return new Date(iso).toLocaleString("th-TH", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function breadcrumbLabel(pathname: string) {
   if (BREADCRUMBS[pathname]) return BREADCRUMBS[pathname];
   if (isTicketDetailPath(pathname)) return "รายละเอียดคำร้อง";
@@ -88,10 +75,14 @@ interface AppNavbarProps {
 
 export const AppNavbar = memo(function AppNavbar({ onMenuToggle, menuOpen = false }: AppNavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const tickets = useTickets();
+  const { items, unread, refreshing, refetch, markRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const unread = MOCK_NOTIFICATIONS.length;
+
+  const unreadInList = items.filter((n) => !n.readAt).length;
+  const olderUnread = Math.max(0, unread - unreadInList);
 
   const managerId = managerTicketId(pathname);
   const managerTicketStatus = managerId
@@ -100,12 +91,13 @@ export const AppNavbar = memo(function AppNavbar({ onMenuToggle, menuOpen = fals
 
   useEffect(() => {
     if (!open) return;
+    void refetch();
     function onPointerDown(e: MouseEvent) {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
+  }, [open, refetch]);
 
   const label = breadcrumbLabel(pathname);
   const detailParent = isTicketDetailPath(pathname)
@@ -158,15 +150,17 @@ export const AppNavbar = memo(function AppNavbar({ onMenuToggle, menuOpen = fals
             type="button"
             variant="ghost"
             className="relative px-2.5"
-            aria-label="แจ้งเตือน"
+            aria-label={
+              unread > 0 ? `แจ้งเตือน, ยังไม่อ่าน ${unread} รายการ` : "แจ้งเตือน"
+            }
             aria-expanded={open}
             aria-haspopup="true"
             onClick={() => setOpen((v) => !v)}
           >
             <Bell className="h-5 w-5" />
             {unread > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white">
-                {unread}
+              <span className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
+                {unread > 99 ? "99+" : unread}
               </span>
             )}
           </Button>
@@ -175,27 +169,93 @@ export const AppNavbar = memo(function AppNavbar({ onMenuToggle, menuOpen = fals
             <div
               role="menu"
               aria-label="รายการแจ้งเตือน"
-              className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg"
+              className="absolute right-0 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg"
             >
-              <div className="border-b border-zinc-100 px-4 py-3">
-                <p className="text-sm font-semibold text-zinc-900">แจ้งเตือน</p>
-                <p className="text-xs text-zinc-500">{unread} รายการใหม่</p>
+              <div className="flex items-start justify-between gap-2 border-b border-zinc-100 bg-white px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-zinc-900">แจ้งเตือน</p>
+                  <p className="text-xs text-zinc-500">
+                    {refreshing && items.length === 0
+                      ? "กำลังโหลดรายการ..."
+                      : unread > 0
+                        ? olderUnread > 0
+                          ? `ยังไม่อ่าน ${unread} รายการ (แสดงล่าสุด ${items.length} รายการ) — กดปุ่ม อ่านทั้งหมด เพื่อล้าง badge`
+                          : `ยังไม่อ่าน ${unread} รายการ — คลิกรายการเพื่อเปิดและทำเครื่องหมายว่าอ่านแล้ว`
+                        : items.length > 0
+                          ? `อ่านครบแล้ว · แสดง ${items.length} รายการล่าสุด`
+                          : "ยังไม่มีแจ้งเตือน"}
+                  </p>
+                </div>
+                {unread > 0 && (
+                  <button
+                    type="button"
+                    className="shrink-0 whitespace-nowrap text-xs font-medium text-sky-600 hover:text-sky-700 hover:underline"
+                    onClick={() => void markAllRead()}
+                  >
+                    อ่านทั้งหมด
+                  </button>
+                )}
               </div>
-              <ul className="max-h-72 divide-y divide-zinc-100 overflow-y-auto">
-                {MOCK_NOTIFICATIONS.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="w-full px-4 py-3 text-left transition-colors hover:bg-zinc-50"
-                      onClick={() => setOpen(false)}
-                    >
-                      <p className="text-sm text-zinc-800">{item.title}</p>
-                      <p className="mt-0.5 text-xs text-zinc-400">{formatRelative(item.at)}</p>
-                    </button>
-                  </li>
-                ))}
+              <ul className="max-h-80 divide-y divide-zinc-100 overflow-y-auto">
+                {refreshing && items.length === 0 ? (
+                  <li className="px-4 py-6 text-center text-sm text-zinc-500">กำลังโหลด...</li>
+                ) : items.length === 0 ? (
+                  <li className="px-4 py-6 text-center text-sm text-zinc-500">ไม่มีแจ้งเตือน</li>
+                ) : (
+                  items.map((item) => {
+                    const display = parseNotificationDisplay(item);
+                    const isUnread = !item.readAt;
+                    return (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          aria-label={item.title}
+                          className={`flex w-full gap-2.5 px-4 py-3 text-left transition-colors hover:bg-zinc-50 ${
+                            isUnread ? "bg-sky-50" : "bg-white"
+                          }`}
+                          onClick={async () => {
+                            if (isUnread) {
+                              const ok = await markRead(item.id);
+                              if (!ok) return;
+                            }
+                            setOpen(false);
+                            router.push(item.href);
+                          }}
+                        >
+                          <span
+                            className={`mt-2 h-2 w-2 shrink-0 rounded-full ${
+                              isUnread ? "bg-sky-500" : "bg-transparent"
+                            }`}
+                            aria-hidden
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-start justify-between gap-2">
+                              <span className="min-w-0 text-sm font-medium leading-snug text-zinc-900">
+                                {display.headline}
+                              </span>
+                              <Badge color={display.badgeColor} className="shrink-0">
+                                {display.kindLabel}
+                              </Badge>
+                            </span>
+                            {display.subject ? (
+                              <span className="mt-1 block truncate text-sm text-zinc-600">
+                                {display.subject}
+                              </span>
+                            ) : null}
+                            <span className="mt-0.5 block text-xs text-zinc-400">{display.meta}</span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })
+                )}
               </ul>
+              {refreshing && items.length > 0 ? (
+                <p className="border-t border-zinc-100 px-4 py-2 text-center text-xs text-zinc-400">
+                  กำลังอัปเดต...
+                </p>
+              ) : null}
             </div>
           )}
         </div>

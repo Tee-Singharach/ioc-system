@@ -6,7 +6,7 @@ import type { Attachment, Priority, TicketFormData } from "@/lib/types/ticket";
 import { PRIORITIES } from "@/lib/types/ticket";
 import { useCatalog } from "@/providers/catalog-provider";
 import { fileToBase64 } from "@/lib/client/file-to-base64";
-import { fromDatetimeLocalValue, toDatetimeLocalValue } from "@/lib/datetime-local";
+import { fromDatetimeLocalValue, datetimeLocalYearsAgo, toDatetimeLocalValue } from "@/lib/datetime-local";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -159,6 +159,8 @@ export function TicketForm({
   }
 
   const totalBytes = attachments.reduce((sum, a) => sum + (a.size ?? 0), 0);
+  const scheduleMin = datetimeLocalYearsAgo(10);
+  const scheduleEndMin = scheduledStart || scheduleMin;
 
   return (
     <Card>
@@ -210,7 +212,7 @@ export function TicketForm({
 
           <FormSection
             title="ความสำคัญและช่วงเวลา"
-            hint="เลือกความสำคัญของงาน และระบุช่วงวันเวลาที่ต้องการให้ดำเนินการ"
+            hint="เลือกช่วงวันเวลาที่ต้องการให้ดำเนินการได้ — ย้อนหลังได้หากแจ้งเรื่องที่เกิดขึ้นแล้ว (วันที่สร้างในระบบบันทึกตอนกดส่งคำร้อง)"
           >
             <div className="grid gap-2 lg:grid-cols-3 lg:gap-3">
               <Select
@@ -224,6 +226,7 @@ export function TicketForm({
                 <Input
                   type="datetime-local"
                   label="ช่วงเวลาเริ่มต้น"
+                  min={scheduleMin}
                   value={scheduledStart}
                   onChange={(e) => setScheduledStart(e.target.value)}
                   error={errors.scheduledStart}
@@ -232,6 +235,7 @@ export function TicketForm({
                 <Input
                   type="datetime-local"
                   label="ช่วงเวลาสิ้นสุด"
+                  min={scheduleEndMin}
                   value={scheduledEnd}
                   onChange={(e) => setScheduledEnd(e.target.value)}
                   error={errors.scheduledEnd}

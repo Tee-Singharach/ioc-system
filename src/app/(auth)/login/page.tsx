@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AuthCard } from "@/components/layout/auth-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,20 +21,22 @@ const QUICK_LOGINS: { username: string; role: UserRole; label: string }[] = [
 ];
 
 export default function LoginPage() {
-  const { login, user } = useMockAuth();
-  const router = useRouter();
+  const { login, user, sessionReady } = useMockAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
-    if (!user) return;
+    if (!sessionReady || !user) return;
     if (user.role === "staff" || user.role === "officer" || user.role === "manager" || user.role === "admin") {
-      router.replace(homePathForRole(user.role));
+      const home = homePathForRole(user.role);
+      if (window.location.pathname !== home) {
+        window.location.replace(home);
+      }
       return;
     }
     clearSession();
-  }, [user, router]);
+  }, [user, sessionReady]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

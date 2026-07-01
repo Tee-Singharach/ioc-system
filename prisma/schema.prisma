@@ -65,6 +65,7 @@ model User {
   comments         TicketComment[]
   progressNotes    ProgressNote[]
   auditLogs        AuditLog[]
+  notifications    Notification[]
 
   @@index([departmentId])
   @@map("users")
@@ -189,4 +190,23 @@ model AuditLog {
   @@index([actorId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String
+  title       String
+  kind        String    @default("other")
+  actorName   String?
+  ticketNo    String?
+  ticketTitle String?
+  href        String
+  ticketId    String?
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
 }

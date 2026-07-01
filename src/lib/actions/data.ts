@@ -3,10 +3,17 @@
 import bcrypt from "bcryptjs";
 import type { Attachment, Ticket, TicketEvaluation, TicketFormData, User } from "@/lib/types/ticket";
 import type { AuditLogEntry, ManagedDepartment, ManagedUser } from "@/lib/types/admin";
+import type { AppNotification } from "@/lib/types/notification";
 import * as db from "@/lib/db/ticket-service";
 import * as adminDb from "@/lib/db/admin-service";
 import { adminResetUserPassword } from "@/lib/db/user-service";
 import { listAuditLogs, mapAuditLogRow, writeAuditLog } from "@/lib/db/audit-log";
+import {
+  countUnread,
+  listNotificationsForUser,
+  markAllNotificationsRead as markAllRead,
+  markNotificationRead as markRead,
+} from "@/lib/db/notification-service";
 
 export async function fetchAllTickets(): Promise<Ticket[]> {
   return db.listAllTickets();
@@ -47,6 +54,22 @@ export async function fetchAdminDepartments(): Promise<ManagedDepartment[]> {
 export async function fetchAuditLogs(): Promise<AuditLogEntry[]> {
   const rows = await listAuditLogs();
   return rows.map(mapAuditLogRow);
+}
+
+export async function fetchMyNotifications(userId: string): Promise<AppNotification[]> {
+  return listNotificationsForUser(userId);
+}
+
+export async function fetchMyUnreadCount(userId: string): Promise<number> {
+  return countUnread(userId);
+}
+
+export async function markNotificationRead(userId: string, id: string): Promise<void> {
+  await markRead(id, userId);
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  await markAllRead(userId);
 }
 
 export async function actionAppendAuditLog(

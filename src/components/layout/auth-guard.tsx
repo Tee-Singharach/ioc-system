@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useLayoutEffect, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { isAdminRoute } from "@/lib/admin-access";
-import { useMounted } from "@/hooks/use-mounted";
 import { clearSession } from "@/lib/mock/session";
 import { homePathForRole } from "@/lib/officer-access";
 import { useMockAuth } from "@/providers/mock-auth-provider";
@@ -53,6 +52,11 @@ function isWrongRoute(role: AppRole, pathname: string) {
   return false;
 }
 
+function redirectTo(href: string) {
+  if (window.location.pathname === href) return;
+  window.location.replace(href);
+}
+
 function LoadingScreen({ message }: { message: string }) {
   return (
     <div className="flex h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-500">
@@ -62,28 +66,28 @@ function LoadingScreen({ message }: { message: string }) {
 }
 
 export function AuthGuard({ children }: { children: ReactNode }) {
-  const mounted = useMounted();
-  const { user } = useMockAuth();
-  const router = useRouter();
+  const { user, sessionReady } = useMockAuth();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (!mounted) return;
+  const wrongRoute = user && isAppRole(user.role) ? isWrongRoute(user.role, pathname) : false;
+
+  useLayoutEffect(() => {
+    if (!sessionReady) return;
     if (!user) {
-      router.replace("/login");
+      redirectTo("/login");
       return;
     }
     if (!isAppRole(user.role)) {
       clearSession();
-      router.replace("/login");
+      redirectTo("/login");
       return;
     }
     if (isWrongRoute(user.role, pathname)) {
-      router.replace(homePathForRole(user.role));
+      redirectTo(homePathForRole(user.role));
     }
-  }, [user, mounted, router, pathname]);
+  }, [user, sessionReady, pathname]);
 
-  if (!mounted) {
+  if (!sessionReady) {
     return <LoadingScreen message="กำลังโหลด..." />;
   }
 
@@ -91,7 +95,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     return <LoadingScreen message="กำลังเปลี่ยนหน้า..." />;
   }
 
-  if (isWrongRoute(user.role, pathname)) {
+  if (wrongRoute) {
     return <LoadingScreen message="กำลังเปลี่ยนหน้า..." />;
   }
 

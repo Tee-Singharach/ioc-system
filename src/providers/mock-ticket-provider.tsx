@@ -30,6 +30,7 @@ import {
 } from "@/lib/actions/data";
 import { sortTicketsByRecent } from "@/lib/ticket-sort";
 import { useMockAuth } from "@/providers/mock-auth-provider";
+import { useNotifications } from "@/providers/notification-provider";
 
 interface TicketActions {
   getTicket: (id: string) => Ticket | undefined;
@@ -55,9 +56,11 @@ interface TicketActions {
 
 const TicketsStateContext = createContext<Ticket[] | null>(null);
 const TicketActionsContext = createContext<TicketActions | null>(null);
+const TicketRefetchContext = createContext<(() => Promise<void>) | null>(null);
 
 export function MockTicketProvider({ children }: { children: ReactNode }) {
   const { user } = useMockAuth();
+  const { refetch: refetchNotifications } = useNotifications();
   const [tickets, setTickets] = useState<Ticket[]>([]);
 
   const patchTicket = useCallback((updated: Ticket | undefined) => {
@@ -67,6 +70,19 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
       return sortTicketsByRecent([updated, ...rest]);
     });
   }, []);
+
+  const refetchAllTickets = useCallback(async () => {
+    const list = await fetchAllTickets();
+    setTickets(sortTicketsByRecent(list));
+  }, []);
+
+  const afterTicket = useCallback(
+    (updated: Ticket | undefined) => {
+      patchTicket(updated);
+      void refetchNotifications();
+    },
+    [patchTicket, refetchNotifications],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -85,42 +101,42 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
     async (data: TicketFormData): Promise<Ticket> => {
       if (!user) throw new Error("Not authenticated");
       const ticket = await actionCreateTicket(user, data);
-      patchTicket(ticket);
+      afterTicket(ticket);
       return ticket;
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const updateTicket = useCallback(
     (id: string, data: TicketFormData) => {
       if (!user) return;
-      void actionUpdateTicket(id, user, data).then(patchTicket);
+      void actionUpdateTicket(id, user, data).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const cancelTicket = useCallback(
     (id: string) => {
       if (!user) return;
-      void actionCancelTicket(id, user).then(patchTicket);
+      void actionCancelTicket(id, user).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const resubmitTicket = useCallback(
     (id: string, data: TicketFormData) => {
       if (!user) return;
-      void actionResubmitTicket(id, user, data).then(patchTicket);
+      void actionResubmitTicket(id, user, data).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const receiveTicket = useCallback(
     (id: string) => {
       if (!user) return;
-      void actionReceiveTicket(id, user).then(patchTicket);
+      void actionReceiveTicket(id, user).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const saveEvaluation = useCallback(
@@ -129,81 +145,81 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
       data: Omit<TicketEvaluation, "evaluatedAt" | "evaluatedById" | "evaluatedByName">,
     ) => {
       if (!user) return;
-      void actionSaveEvaluation(id, user, data).then(patchTicket);
+      void actionSaveEvaluation(id, user, data).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const submitForApproval = useCallback(
     (id: string) => {
       if (!user) return;
-      void actionSubmitForApproval(id, user).then(patchTicket);
+      void actionSubmitForApproval(id, user).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const completeTicket = useCallback(
     (id: string, summary?: string) => {
       if (!user) return;
-      void actionCompleteTicket(id, user, summary).then(patchTicket);
+      void actionCompleteTicket(id, user, summary).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const addProgressNote = useCallback(
     (id: string, content: string) => {
       if (!user) return;
-      void actionAddProgressNote(id, user, content).then(patchTicket);
+      void actionAddProgressNote(id, user, content).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const assignTicket = useCallback(
     (id: string, officerId: string) => {
       if (!user) return;
-      void actionAssignTicket(id, user, officerId).then(patchTicket);
+      void actionAssignTicket(id, user, officerId).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const addComment = useCallback(
     (ticketId: string, content: string, attachments?: Attachment[]) => {
       if (!user) return;
-      void actionAddComment(ticketId, user, content, attachments).then(patchTicket);
+      void actionAddComment(ticketId, user, content, attachments).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const updateComment = useCallback(
     (ticketId: string, commentId: string, content: string) => {
       if (!user) return;
-      void actionUpdateComment(ticketId, user, commentId, content).then(patchTicket);
+      void actionUpdateComment(ticketId, user, commentId, content).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const deleteComment = useCallback(
     (ticketId: string, commentId: string) => {
       if (!user) return;
-      void actionDeleteComment(ticketId, user, commentId).then(patchTicket);
+      void actionDeleteComment(ticketId, user, commentId).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const approveTicket = useCallback(
     (id: string) => {
       if (!user) return;
-      void actionApproveTicket(id, user).then(patchTicket);
+      void actionApproveTicket(id, user).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const rejectTicket = useCallback(
     (id: string, reason: string) => {
       if (!user) return;
-      void actionRejectTicket(id, user, reason).then(patchTicket);
+      void actionRejectTicket(id, user, reason).then(afterTicket);
     },
-    [user, patchTicket],
+    [user, afterTicket],
   );
 
   const actions = useMemo(
@@ -247,7 +263,9 @@ export function MockTicketProvider({ children }: { children: ReactNode }) {
 
   return (
     <TicketsStateContext.Provider value={tickets}>
-      <TicketActionsContext.Provider value={actions}>{children}</TicketActionsContext.Provider>
+      <TicketRefetchContext.Provider value={refetchAllTickets}>
+        <TicketActionsContext.Provider value={actions}>{children}</TicketActionsContext.Provider>
+      </TicketRefetchContext.Provider>
     </TicketsStateContext.Provider>
   );
 }
@@ -268,4 +286,10 @@ export function useMockTickets() {
   const tickets = useTickets();
   const actions = useTicketActions();
   return useMemo(() => ({ tickets, ...actions }), [tickets, actions]);
+}
+
+export function useTicketRefetch() {
+  const refetch = useContext(TicketRefetchContext);
+  if (!refetch) throw new Error("useTicketRefetch must be used within MockTicketProvider");
+  return refetch;
 }

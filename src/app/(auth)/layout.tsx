@@ -1,8 +1,5 @@
-"use client";
-
 import type { ReactNode } from "react";
-import { MockAuthProvider } from "@/providers/mock-auth-provider";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
-  return <MockAuthProvider>{children}</MockAuthProvider>;
+  return children;
 }

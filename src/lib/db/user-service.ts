@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/db/audit-log";
+import { notifyUsers } from "@/lib/db/notification-service";
 import type { User } from "@/lib/types/ticket";
 
 const MIN_PASSWORD_LEN = 6;
@@ -34,5 +35,10 @@ export async function adminResetUserPassword(
     data: { passwordHash },
   });
   await writeAuditLog(actor.id, "รีเซ็ตรหัสผ่าน", target.username, target.name);
+  await notifyUsers([targetUserId], {
+    kind: "password",
+    actorName: actor.name,
+    href: "/settings",
+  });
   return { ok: true };
 }

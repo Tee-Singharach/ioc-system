@@ -7,7 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // bump after `prisma generate` when dev server still serves stale client
-const PRISMA_CLIENT_REV = 2;
+const PRISMA_CLIENT_REV = 3;
 
 function createPrismaClient() {
   const url = process.env.DATABASE_URL;

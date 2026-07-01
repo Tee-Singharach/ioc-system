@@ -10,3 +10,11 @@ export function toDatetimeLocalValue(iso: string): string {
 export function fromDatetimeLocalValue(value: string): string {
   return new Date(value).toISOString();
 }
+
+/** Earliest selectable datetime-local value (ponytail: 10y back enough for late reports). */
+export function datetimeLocalYearsAgo(years: number): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - years);
+  d.setHours(0, 0, 0, 0);
+  return toDatetimeLocalValue(d.toISOString());
+}
